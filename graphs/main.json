@@ -2,71 +2,120 @@
     "properties": {
         "name": "main",
         "environment": {
-            "type": "noflo-browser",
-            "content": "<button id='button'>Go!</button>\n<p id='message'></p>"
-        },
-        "icon": ""
+            "type": "noflo-browser"
+        }
     },
-    "inports": {},
+    "inports": {
+        "nf_graph": {
+            "process": "MakeNofloAction",
+            "port": "graph",
+            "metadata": {
+                "x": 0,
+                "y": -72,
+                "width": 72,
+                "height": 72
+            }
+        },
+        "view_action": {
+            "process": "MakeViewAction",
+            "port": "in",
+            "metadata": {
+                "x": 0,
+                "y": 144,
+                "width": 72,
+                "height": 72
+            }
+        },
+        "runtime_action": {
+            "process": "MakeRuntimeAction",
+            "port": "in",
+            "metadata": {
+                "x": 0,
+                "y": 288,
+                "width": 72,
+                "height": 72
+            }
+        }
+    },
     "outports": {},
     "groups": [],
     "processes": {
-        "dom/GetElement_7amk2": {
-            "component": "dom/GetElement",
+        "MakeViewAction": {
+            "component": "the-graph-canvas/MakeViewAction",
             "metadata": {
-                "label": "dom/GetElement",
-                "x": 252,
-                "y": 180,
+                "label": "MakeViewAction",
+                "x": 288,
+                "y": 144,
                 "width": 72,
                 "height": 72
             }
         },
-        "core/Output_cg49": {
-            "component": "core/Output",
+        "MakeNofloAction": {
+            "component": "the-graph-canvas/MakeNofloAction",
             "metadata": {
-                "label": "core/Output",
-                "x": 432,
-                "y": 360,
+                "label": "MakeNofloAction",
+                "x": 288,
+                "y": 0,
                 "width": 72,
                 "height": 72
             }
         },
-        "dom/WriteHtml_fpz6j": {
-            "component": "dom/WriteHtml",
+        "MakeRuntimeAction": {
+            "component": "the-graph-canvas/MakeRuntimeAction",
             "metadata": {
-                "label": "dom/WriteHtml",
-                "x": 684,
+                "label": "MakeRuntimeAction",
+                "x": 288,
                 "y": 288,
                 "width": 72,
                 "height": 72
             }
         },
-        "dom/GetElement_xvz54": {
-            "component": "dom/GetElement",
+        "RouteAction": {
+            "component": "the-graph-canvas/RouteAction",
             "metadata": {
-                "label": "dom/GetElement",
-                "x": 252,
-                "y": 288,
+                "label": "RouteAction",
+                "x": 144,
+                "y": 72,
                 "width": 72,
                 "height": 72
             }
         },
-        "interaction/ListenMouse_1l373": {
-            "component": "interaction/ListenMouse",
+        "Dispatch": {
+            "component": "the-graph-canvas/Dispatch",
             "metadata": {
-                "label": "interaction/ListenMouse",
+                "label": "Dispatch",
                 "x": 432,
+                "y": 144,
+                "width": 72,
+                "height": 72
+            }
+        },
+        "StoreGraph": {
+            "component": "the-graph-canvas/MakeGraphStore",
+            "metadata": {
+                "label": "StoreGraph",
+                "x": 720,
                 "y": 180,
                 "width": 72,
                 "height": 72
             }
         },
-        "core/Kick_ey1nh": {
-            "component": "core/Kick",
+        "StoreLibrary": {
+            "component": "the-graph-canvas/MakeLibraryStore",
             "metadata": {
-                "label": "core/Kick",
+                "label": "StoreLibrary",
                 "x": 576,
-                "y": 180,
+                "y": 72,
+                "width": 72,
+                "height": 72
+            }
+        },
+        "Render": {
+            "component": "the-graph-canvas/RenderGraph",
+            "metadata": {
+                "label": "Render",
+                "x": 864,
+                "y": 72,
                 "width": 72,
                 "height": 72
             }
@@ -75,23 +124,67 @@
     "connections": [
         {
             "src": {
-                "process": "dom/GetElement_xvz54",
-                "port": "element"
+                "process": "RouteAction",
+                "port": "noflo"
             },
             "tgt": {
-                "process": "dom/WriteHtml_fpz6j",
-                "port": "container"
+                "process": "MakeNofloAction",
+                "port": "in"
             },
             "metadata": {}
         },
         {
             "src": {
-                "process": "dom/GetElement_7amk2",
-                "port": "element"
+                "process": "RouteAction",
+                "port": "view"
             },
             "tgt": {
-                "process": "interaction/ListenMouse_1l373",
-                "port": "element"
+                "process": "MakeViewAction",
+                "port": "in"
+            },
+            "metadata": {}
+        },
+        {
+            "src": {
+                "process": "MakeNofloAction",
+                "port": "action"
+            },
+            "tgt": {
+                "process": "Dispatch",
+                "port": "action"
+            },
+            "metadata": {}
+        },
+        {
+            "src": {
+                "process": "MakeViewAction",
+                "port": "action"
+            },
+            "tgt": {
+                "process": "Dispatch",
+                "port": "action"
+            },
+            "metadata": {}
+        },
+        {
+            "src": {
+                "process": "MakeRuntimeAction",
+                "port": "action"
+            },
+            "tgt": {
+                "process": "Dispatch",
+                "port": "action"
+            },
+            "metadata": {}
+        },
+        {
+            "src": {
+                "process": "Dispatch",
+                "port": "new_graph"
+            },
+            "tgt": {
+                "process": "StoreLibrary",
+                "port": "graph"
             },
             "metadata": {
                 "route": 0
@@ -99,72 +192,73 @@
         },
         {
             "src": {
-                "process": "dom/GetElement_7amk2",
-                "port": "error"
+                "process": "StoreLibrary",
+                "port": "library"
             },
             "tgt": {
-                "process": "core/Output_cg49",
-                "port": "in"
-            },
-            "metadata": {
-                "route": 1
-            }
-        },
-        {
-            "src": {
-                "process": "dom/GetElement_xvz54",
-                "port": "error"
-            },
-            "tgt": {
-                "process": "core/Output_cg49",
-                "port": "in"
-            },
-            "metadata": {
-                "route": 1
-            }
-        },
-        {
-            "src": {
-                "process": "interaction/ListenMouse_1l373",
-                "port": "click"
-            },
-            "tgt": {
-                "process": "core/Kick_ey1nh",
-                "port": "in"
+                "process": "StoreGraph",
+                "port": "library"
             },
             "metadata": {}
         },
         {
             "src": {
-                "process": "core/Kick_ey1nh",
+                "process": "Dispatch",
+                "port": "lib_action"
+            },
+            "tgt": {
+                "process": "StoreLibrary",
+                "port": "action"
+            },
+            "metadata": {}
+        },
+        {
+            "src": {
+                "process": "Dispatch",
+                "port": "new_graph"
+            },
+            "tgt": {
+                "process": "StoreGraph",
+                "port": "graph"
+            },
+            "metadata": {
+                "route": 0
+            }
+        },
+        {
+            "src": {
+                "process": "Dispatch",
+                "port": "graph_action"
+            },
+            "tgt": {
+                "process": "StoreGraph",
+                "port": "action"
+            },
+            "metadata": {
+                "route": null
+            }
+        },
+        {
+            "src": {
+                "process": "StoreGraph",
+                "port": "state"
+            },
+            "tgt": {
+                "process": "Render",
+                "port": "state"
+            },
+            "metadata": {}
+        },
+        {
+            "src": {
+                "process": "Render",
                 "port": "out"
             },
             "tgt": {
-                "process": "dom/WriteHtml_fpz6j",
-                "port": "html"
+                "process": "RouteAction",
+                "port": "in"
             },
             "metadata": {}
-        },
-        {
-            "data": "#button",
-            "tgt": {
-                "process": "dom/GetElement_7amk2",
-                "port": "selector"
-            }
-        },
-        {
-            "data": "#message",
-            "tgt": {
-                "process": "dom/GetElement_xvz54",
-                "port": "selector"
-            }
-        },
-        {
-            "data": "Hello World!",
-            "tgt": {
-                "process": "core/Kick_ey1nh",
-                "port": "data"
-            }
         }
     ]
 }
