@@ -8,5 +8,5 @@ exports.getComponent = ->
     return unless event is 'data'
     # Do something with the packet, then
     
-  c.outPorts.add 'out'
+  c.outPorts.add 'event'
   c
