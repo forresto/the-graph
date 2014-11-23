@@ -19,7 +19,8 @@
     "test": "grunt test"
   },
   "dependencies": {
-    "noflo": "~0.5.11"
+    "noflo": "~0.5.11",
+    "raf": "^2.0.4"
   },
   "devDependencies": {
     "chai": "^1.10.0",
