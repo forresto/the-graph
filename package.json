@@ -1,14 +1,13 @@
 {
-  "name": "noflo-browser-app",
-  "description": "The best project ever.",
-  "version": "0.1.0",
+  "name": "the-graph-flux",
+  "description": "Flow-based programming graph editor.",
+  "version": "0.0.1",
   "author": {
-    "name": "Jon Nordby",
-    "email": "jononor@gmail.com"
+    "name": "Forrest Oliphant"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/noflo/noflo-browser-app.git"
+    "url": "git://github.com/forresto/the-graph-flux.git"
   },
   "licenses": [
     {
@@ -20,26 +19,34 @@
     "test": "grunt test"
   },
   "dependencies": {
-    "noflo": "~0.5.0"
+    "noflo": "~0.5.11"
   },
   "devDependencies": {
-    "chai": "~1.9.0",
+    "chai": "^1.10.0",
     "grunt": "~0.4.1",
-    "grunt-cafe-mocha": "~0.1.12",
     "grunt-coffeelint": "~0.0.10",
     "grunt-contrib-coffee": "~0.10.1",
     "grunt-contrib-uglify": "~0.2.0",
     "grunt-contrib-watch": "~0.6.1",
     "grunt-gh-pages": "^0.9.1",
-    "grunt-mocha-phantomjs": "~0.2.2",
     "grunt-noflo-browser": "^0.1.8",
     "grunt-noflo-manifest": "~0.1.11",
-    "mocha": "~1.21.0"
+    "noflo-test": "git://github.com/noflo/noflo-test"
   },
   "keywords": [],
   "noflo": {
     "components": {
-      "DoSomething": "components/DoSomething.coffee"
+      "Dispatch": "components/Dispatch.coffee",
+      "MakeGraphStore": "components/MakeGraphStore.coffee",
+      "MakeLibraryStore": "components/MakeLibraryStore.coffee",
+      "MakeNofloAction": "components/MakeNofloAction.coffee",
+      "MakeRuntimeAction": "components/MakeRuntimeAction.coffee",
+      "MakeViewAction": "components/MakeViewAction.coffee",
+      "RenderGraph": "components/RenderGraph.coffee",
+      "RouteAction": "components/RouteAction.coffee"
+    },
+    "graphs": {
+      "flux": "graphs/flux.json"
     }
   }
 }

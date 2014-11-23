@@ -17,19 +17,36 @@
   ],
   "scripts": [
     "index.js",
-    "components/DoSomething.coffee",
-    "graphs/main.json"
+    "components/MakeLibraryStore.coffee",
+    "graphs/main.json",
+    "components/Dispatch.coffee",
+    "components/MakeGraphStore.coffee",
+    "components/MakeNofloAction.coffee",
+    "components/MakeRuntimeAction.coffee",
+    "components/MakeViewAction.coffee",
+    "components/RenderGraph.coffee",
+    "components/RouteAction.coffee",
+    "graphs/flux.json"
   ],
   "json": [
     "graphs/main.json",
-    "component.json"
+    "component.json",
+    "graphs/flux.json"
   ],
   "noflo": {
     "graphs": {
+      "flux": "graphs/flux.json",
       "main": "graphs/main.json"
     },
     "components": {
-      "DoSomething": "components/DoSomething.coffee"
+      "Dispatch": "components/Dispatch.coffee",
+      "MakeGraphStore": "components/MakeGraphStore.coffee",
+      "MakeLibraryStore": "components/MakeLibraryStore.coffee",
+      "MakeNofloAction": "components/MakeNofloAction.coffee",
+      "MakeRuntimeAction": "components/MakeRuntimeAction.coffee",
+      "MakeViewAction": "components/MakeViewAction.coffee",
+      "RenderGraph": "components/RenderGraph.coffee",
+      "RouteAction": "components/RouteAction.coffee"
     }
   }
 }

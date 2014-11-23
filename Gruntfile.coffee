@@ -46,34 +46,16 @@ module.exports = ->
       files: ['spec/*.coffee', 'components/*.coffee']
       tasks: ['test']
 
-    # BDD tests on Node.js
-    cafemocha:
-      nodejs:
-        src: ['spec/*.coffee']
-        options:
-          reporter: 'spec'
-
-    # Generate runner.html
-    noflo_browser_mocha:
-      all:
-        options:
-          scripts: ["../browser/<%=pkg.name%>.js"]
-        files:
-          'spec/runner.html': ['spec/*.js']
-
-    # BDD tests on browser
-    mocha_phantomjs:
-      options:
-        output: 'spec/result.xml'
-        reporter: 'spec'
-      all: ['spec/runner.html']
-
     # Coding standards
     coffeelint:
       components: ['Gruntfile.coffee', 'spec/*.coffee', 'components/*.coffee']
       options:
         'max_line_length':
           'level': 'ignore'
+
+    'noflo_test':
+      components:
+        src: ['test/*.coffee']
 
     'gh-pages':
       options:
@@ -98,6 +80,7 @@ module.exports = ->
   @loadNpmTasks 'grunt-cafe-mocha'
   @loadNpmTasks 'grunt-mocha-phantomjs'
   @loadNpmTasks 'grunt-coffeelint'
+  @loadNpmTasks 'noflo-test'
 
   # Grunt plugins used for deploying
   @loadNpmTasks 'grunt-gh-pages'
@@ -114,11 +97,6 @@ module.exports = ->
     @task.run 'coffeelint'
     @task.run 'coffee'
     @task.run 'noflo_manifest'
-    if target is 'all' or target is 'nodejs'
-      @task.run 'cafemocha'
-    if target is 'all' or target is 'browser'
-      @task.run 'noflo_browser'
-      @task.run 'noflo_browser_mocha'
-      @task.run 'mocha_phantomjs'
+    @task.run 'noflo_test'
 
   @registerTask 'default', ['test']
