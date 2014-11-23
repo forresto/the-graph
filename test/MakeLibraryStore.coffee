@@ -2,6 +2,8 @@ Noflo = require 'noflo'
 test = require 'noflo-test'
 chai = require 'chai'
 
+Constants = require '../src/Constants'
+
 graph = require './fixtures/graph.json'
 nfGraph = null
 Noflo.graph.loadJSON graph, (nf) -> nfGraph = nf
@@ -12,7 +14,7 @@ test.component('MakeLibraryStore').
     send.data('graph', {}).
     it('Should error').
       receive.data('error', (data) -> 
-        chai.expect(data.message).to.equal('ip should be a noflo graph')
+        chai.expect(data.message).to.equal(Constants.Error.NEED_NOFLO_GRAPH)
       ).
   describe('When receiving an initial graph').
     send.data('graph', nfGraph).

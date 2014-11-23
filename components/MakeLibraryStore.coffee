@@ -1,4 +1,5 @@
 noflo = require 'noflo'
+Constants = require '../src/Constants'
 
 exports.getComponent = ->
   c = new noflo.Component
@@ -12,7 +13,7 @@ exports.getComponent = ->
     return unless event is 'data'
     graph = payload
     unless graph?.addNode?
-      c.error new Error 'ip should be a noflo graph'
+      c.error new Error Constants.Error.NEED_NOFLO_GRAPH
       return
     c._data = {}
     components = makeInitialComponents graph
