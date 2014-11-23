@@ -2,14 +2,12 @@ Noflo = require 'noflo'
 test = require 'noflo-test'
 chai = require 'chai'
 
-getComponent = require('../components/MakeLibraryStore').getComponent
-
 graph = require './fixtures/graph.json'
 nfGraph = null
 Noflo.graph.loadJSON graph, (nf) -> nfGraph = nf
 expected = require './fixtures/graphExpectedLibrary.json'
 
-test.component('MakeLibraryStore', getComponent).
+test.component('MakeLibraryStore').
   describe('When receiving data that isn\'t a noflo graph').
     send.data('graph', {}).
     it('Should error').
