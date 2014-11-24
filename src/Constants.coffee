@@ -12,5 +12,6 @@ module.exports = GraphConstants =
   Graph:
     NEW_GRAPH: 'new graph'
     CHANGE_GRAPH: 'change graph'
+    ADD_NODE: 'addNode'
   Error:
     NEED_NOFLO_GRAPH: 'IP should be a valid NoFlo Graph'
