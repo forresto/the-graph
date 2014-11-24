@@ -36,21 +36,23 @@ exports.getComponent = ->
     c.stopLoop()
 
   c.inPorts.add 'action', (event, payload) ->
-    if event is 'begingroup'
-      c.group = payload
-      if payload is Constants.Graph.NEW_GRAPH
-        c.actions = []
-        c.outPorts.new_graph.beginGroup c.group
-    if event is 'data'
-      if c.group is Constants.Graph.NEW_GRAPH
-        c.outPorts.new_graph.send payload
-      else
-        c.actions.push payload
-        c.startLoop()
-    if event is 'endgroup'
-      if c.group is Constants.Graph.NEW_GRAPH
-        c.outPorts.new_graph.endGroup()
-      c.group = null
+    switch event 
+      when 'begingroup'
+        c.group = payload
+        if payload is Constants.Graph.NEW_GRAPH
+          c.actions = []
+          c.outPorts.new_graph.beginGroup c.group
+      when 'data'
+        if c.group is Constants.Graph.NEW_GRAPH
+          c.outPorts.new_graph.send payload
+        else
+          c.actions.push payload
+          c.startLoop()
+      when 'endgroup'
+        if c.group is Constants.Graph.NEW_GRAPH
+          c.outPorts.new_graph.endGroup()
+        c.group = null
+        
   c.inPorts.add 'tick',
     description: 'if not hit, will batch and dispatch on internal rAF loop'
   , (event, payload) ->
