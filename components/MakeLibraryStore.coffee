@@ -6,6 +6,14 @@ exports.getComponent = ->
   c.icon = 'hdd-o'
   c.description = 'Infers the initial library from the starting graph.'
   c._data = null
+  c.processGraph = (graph) ->
+    c._data = {}
+    components = makeInitialComponents graph
+    for component in components
+      c.registerComponent component
+    c.outPorts.library.beginGroup Constants.Library.NEW_LIBRARY
+    c.outPorts.library.send c._data
+    c.outPorts.library.endGroup()
   c.registerComponent = (definition) ->
     mergeComponentDefinition definition, c._data
 
@@ -15,12 +23,8 @@ exports.getComponent = ->
     unless graph?.addNode?
       c.error new Error Constants.Error.NEED_NOFLO_GRAPH
       return
-    c._data = {}
-    components = makeInitialComponents graph
-    for component in components
-      c.registerComponent component
+    c.processGraph graph
 
-    c.outPorts.library.send c._data
   c.inPorts.add 'action'
   c.outPorts.add 'library'
   c.outPorts.add 'error'

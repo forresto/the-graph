@@ -9,6 +9,9 @@ module.exports = GraphConstants =
     ZOOM: 'zoom'
     SHOW_CONTEXT: 'show context'
     NAV_TO: 'nav to'
+  Library:
+    NEW_LIBRARY: 'new library'
+    CHANGE_LIBRARY: 'change library'
   Graph:
     NEW_GRAPH: 'new graph'
     CHANGE_GRAPH: 'change graph'
