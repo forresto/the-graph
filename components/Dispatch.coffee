@@ -36,7 +36,7 @@ exports.getComponent = ->
     c.stopLoop()
 
   c.inPorts.add 'action', (event, payload) ->
-    switch event 
+    switch event
       when 'begingroup'
         c.group = payload
         if payload is Constants.Graph.NEW_GRAPH
@@ -52,7 +52,7 @@ exports.getComponent = ->
         if c.group is Constants.Graph.NEW_GRAPH
           c.outPorts.new_graph.endGroup()
         c.group = null
-        
+
   c.inPorts.add 'tick',
     description: 'if not hit, will batch and dispatch on internal rAF loop'
   , (event, payload) ->
