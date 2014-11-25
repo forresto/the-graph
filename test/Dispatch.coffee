@@ -24,7 +24,7 @@ test.component('Dispatch').
     send.beginGroup('action', Constants.Graph.CHANGE_GRAPH).
     send.data('action', graph).
     it('Should send the graph (async with animation frame).').
-      receive.data('action', graph).
+      receive.data('graph_action', graph).
   describe('When receiving an action with external animation tick').
     send.data('tick', true).
     send.beginGroup('action', Constants.Graph.CHANGE_GRAPH).
@@ -32,5 +32,5 @@ test.component('Dispatch').
     send.endGroup('action').
     send.data('tick', true).
     it('Should send the graph (sync with external tick).').
-      receive.data('action', graph).
+      receive.data('graph_action', graph).
 export(module)
