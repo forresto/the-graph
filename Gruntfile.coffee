@@ -14,15 +14,15 @@ module.exports = ->
           'package.json': ['graphs/*', 'components/*']
 
     # CoffeeScript compilation of tests
-    coffee:
-      spec:
-        options:
-          bare: true
-        expand: true
-        cwd: 'spec'
-        src: ['**.coffee']
-        dest: 'spec'
-        ext: '.js'
+    # coffee:
+    #   test:
+    #     options:
+    #       bare: true
+    #     expand: true
+    #     cwd: 'test'
+    #     src: ['**.coffee']
+    #     dest: 'test'
+    #     ext: '.js'
 
     # Browser build of NoFlo
     noflo_browser:
@@ -43,12 +43,12 @@ module.exports = ->
 
     # Automated recompilation and testing when developing
     watch:
-      files: ['spec/*.coffee', 'components/*.coffee']
+      files: ['test/*.coffee', 'components/*.coffee']
       tasks: ['test']
 
     # Coding standards
     coffeelint:
-      components: ['Gruntfile.coffee', 'spec/*.coffee', 'components/*.coffee']
+      components: ['Gruntfile.coffee', 'test/*.coffee', 'components/*.coffee']
       options:
         'max_line_length':
           'level': 'ignore'
@@ -87,7 +87,7 @@ module.exports = ->
 
   # Our local tasks
   @registerTask 'build', 'Build NoFlo for the chosen target platform', (target = 'all') =>
-    @task.run 'coffee'
+    # @task.run 'coffee'
     @task.run 'noflo_manifest'
     if target is 'all' or target is 'browser'
       @task.run 'noflo_browser'
@@ -95,7 +95,7 @@ module.exports = ->
 
   @registerTask 'test', 'Build NoFlo and run automated tests', (target = 'all') =>
     @task.run 'coffeelint'
-    @task.run 'coffee'
+    # @task.run 'coffee'
     @task.run 'noflo_manifest'
     @task.run 'noflo_test'
 

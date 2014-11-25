@@ -1,6 +1,5 @@
 Noflo = require 'noflo'
 test = require 'noflo-test'
-chai = require 'chai'
 
 Constants = require '../src/Constants'
 
@@ -12,8 +11,9 @@ test.component('MakeNofloAction').
   describe('When receiving data that isn\'t a noflo graph').
     send.data('graph', {}).
     it('Should error').
-      receive.data('error', (data) ->
-        chai.expect(data.message).to.equal(Constants.Error.NEED_NOFLO_GRAPH)
+      receive.data('error',
+        (data, chai) ->
+          chai.expect(data.message).to.equal(Constants.Error.NEED_NOFLO_GRAPH)
       ).
   # describe('When receiving a graph').
   #   send.data('graph', nfGraph).
@@ -32,10 +32,11 @@ test.component('MakeNofloAction').
       receive.data('action', nfGraph).
       receive.endGroup('action').
       receive.beginGroup('action', Constants.Graph.CHANGE_GRAPH).
-      receive.data('action', (graph) ->
-        chai.expect(graph.nodes.length).to.equal 5
-        chai.expect(graph.nodes[4].id).to.equal 'name'
-        chai.expect(graph.nodes[4].component).to.equal 'lib/comp'
+      receive.data('action',
+        (graph, chai) ->
+          chai.expect(graph.nodes.length).to.equal 5
+          chai.expect(graph.nodes[4].id).to.equal 'name'
+          chai.expect(graph.nodes[4].component).to.equal 'lib/comp'
       ).
       receive.endGroup('action').
   describe('When receiving a new graph').
