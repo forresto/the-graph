@@ -1,0 +1,91 @@
+{
+  "edges": [
+    {
+      "from": {
+        "node": "foo0",
+        "port": "out"
+      },
+      "metadata": {},
+      "to": {
+        "node": "bar0",
+        "port": "in0"
+      }
+    },
+    {
+      "from": {
+        "node": "foo1",
+        "port": "out"
+      },
+      "metadata": {},
+      "to": {
+        "node": "bar1",
+        "port": "in0"
+      }
+    }
+  ],
+  "groups": [],
+  "inports": [],
+  "nodes": [
+    {
+      "icon": "cog",
+      "inports": [
+        {
+          "name": "in",
+          "type": "all"
+        }
+      ],
+      "outports": [
+        {
+          "name": "out",
+          "type": "all"
+        }
+      ]
+    },
+    {
+      "icon": "cog",
+      "inports": [
+        {
+          "name": "in0",
+          "type": "all"
+        }
+      ],
+      "outports": [
+        {
+          "name": "out0",
+          "type": "all"
+        }
+      ]
+    },
+    {
+      "icon": "cog",
+      "inports": [
+        {
+          "name": "in",
+          "type": "all"
+        }
+      ],
+      "outports": [
+        {
+          "name": "out",
+          "type": "all"
+        }
+      ]
+    },
+    {
+      "icon": "cog",
+      "inports": [
+        {
+          "name": "in0",
+          "type": "all"
+        }
+      ],
+      "outports": [
+        {
+          "name": "out0",
+          "type": "all"
+        }
+      ]
+    }
+  ],
+  "outports": []
+}

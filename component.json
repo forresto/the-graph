@@ -1,8 +1,8 @@
 {
-  "name": "noflo-browser-app",
-  "description": "The best project ever.",
-  "author": "Jon Nordby <jononor@gmail.com>",
-  "repo": "noflo/noflo-browser-app",
+  "name": "the-graph",
+  "description": "",
+  "author": "Forrest Oliphant",
+  "repo": "forresto/the-graph-flux",
   "version": "0.1.0",
   "keywords": [],
   "dependencies": {
@@ -26,15 +26,18 @@
     "components/MakeViewAction.coffee",
     "components/RenderGraph.coffee",
     "components/RouteAction.coffee",
-    "graphs/flux.json"
+    "graphs/flux.json",
+    "graphs/Batch.json"
   ],
   "json": [
     "graphs/main.json",
     "component.json",
-    "graphs/flux.json"
+    "graphs/flux.json",
+    "graphs/Batch.json"
   ],
   "noflo": {
     "graphs": {
+      "Batch": "graphs/Batch.json",
       "flux": "graphs/flux.json",
       "main": "graphs/main.json"
     },

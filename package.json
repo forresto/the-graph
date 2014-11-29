@@ -1,5 +1,5 @@
 {
-  "name": "the-graph-flux",
+  "name": "the-graph",
   "description": "Flow-based programming graph editor.",
   "version": "0.0.1",
   "author": {
@@ -32,7 +32,8 @@
     "grunt-gh-pages": "^0.9.1",
     "grunt-noflo-browser": "^0.1.8",
     "grunt-noflo-manifest": "~0.1.11",
-    "noflo-test": "git://github.com/noflo/noflo-test"
+    "noflo-test": "git://github.com/noflo/noflo-test",
+    "noflo-tester": "0.0.2"
   },
   "keywords": [],
   "noflo": {
