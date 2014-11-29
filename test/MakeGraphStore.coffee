@@ -20,8 +20,5 @@ describe 'MakeGraphStore', ->
     t.outs.state.on 'data', (data) ->
       chai.expect(data).to.deep.equal expected
       done()
-    # t.receive 'state', (data) ->
-    #   chai.expect(data).to.deep.equal graphExpectedState
-    #   done()
     t.send 'library', library
     t.send 'graph', graph

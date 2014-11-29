@@ -1,49 +1,53 @@
 Noflo = require 'noflo'
-test = require 'noflo-test'
+Tester = require 'noflo-tester'
+chai = require 'chai'
 
 Constants = require '../src/Constants'
 
-graph = require './fixtures/graph.json'
-nfGraph = null
-Noflo.graph.loadJSON graph, (nf) -> nfGraph = nf
+graphJSON = require './fixtures/graph.json'
+graph = null
+Noflo.graph.loadJSON graphJSON, (nfGraph) -> graph = nfGraph
 
-test.component('MakeNofloAction').
-  describe('When receiving data that isn\'t a noflo graph').
-    send.data('graph', {}).
-    it('Should error').
-      receive.data('error',
-        (data, chai) ->
-          chai.expect(data.message).to.equal(Constants.Error.NEED_NOFLO_GRAPH)
-      ).
-  # describe('When receiving a graph').
-  #   send.data('graph', nfGraph).
-  #   it('Should make `new graph` action.').
-  #     receive.beginGroup('action', Constants.Graph.NEW_GRAPH).
-  #     receive.data('action', nfGraph).
-  #     receive.endGroup('action').
-  describe('When receiving a graph change action').
-    send.data('graph', nfGraph).
-    send.beginGroup('in', Constants.Graph.ADD_NODE).
-    send.data('in', ['name', 'lib/comp', {x:10, y:10}]).
-    send.endGroup('in').
-    it('Should make `new graph` and `change graph` actions.').
-      receive.connect('action').
-      receive.beginGroup('action', Constants.Graph.NEW_GRAPH).
-      receive.data('action', nfGraph).
-      receive.endGroup('action').
-      receive.beginGroup('action', Constants.Graph.CHANGE_GRAPH).
-      receive.data('action',
-        (graph, chai) ->
-          chai.expect(graph.nodes.length).to.equal 5
-          chai.expect(graph.nodes[4].id).to.equal 'name'
-          chai.expect(graph.nodes[4].component).to.equal 'lib/comp'
-      ).
-      receive.endGroup('action').
-  describe('When receiving a new graph').
-    send.data('graph', nfGraph).
-    send.data('graph', nfGraph).
-    it('Should disconnect, then connect').
-      receive.connect('action').
-      receive.disconnect('action').
-      receive.connect('action').
-export(module)
+describe 'MakeNofloAction', ->
+  t = new Tester 'the-graph/MakeNofloAction'
+
+  before (done) ->
+    t.start ->
+      done()
+
+  describe 'When receiving data that isn\'t a noflo graph', ->
+    it 'Should error', (done) ->
+      t.receive 'error', (data) ->
+        chai.expect(data.message).to.equal(Constants.Error.NEED_NOFLO_GRAPH)
+        done()
+      t.send 'graph', {}
+
+  describe 'When receiving a graph', ->
+    it 'Should make `new graph` action.', (done) ->
+      t.receive 'action', (data, groups, dataCount, groupCount) ->
+        chai.expect(groups[0]).to.equal(Constants.Graph.NEW_GRAPH)
+        chai.expect(data).to.equal(graph)
+        done()
+      t.send {graph}
+
+  describe 'When receiving a graph change action', ->
+    it 'Should make `change graph` action.', (done) ->
+      t.receive 'action', (data, groups, dataCount, groupCount) ->
+        chai.expect(groups[0]).to.equal(Constants.Graph.CHANGE_GRAPH)
+        graph = data
+        chai.expect(graph.nodes.length).to.equal 5
+        chai.expect(graph.nodes[4].id).to.equal 'name'
+        chai.expect(graph.nodes[4].component).to.equal 'lib/comp'
+        done()
+      t.send
+        in:
+          type: Constants.Graph.ADD_NODE
+          args: ['name', 'lib/comp', {x:10, y:10}]
+
+  describe 'When receiving a new graph', ->
+    it 'Should make `new graph` action.', (done) ->
+      t.receive 'action', (data, groups, dataCount, groupCount) ->
+        chai.expect(groups[0]).to.equal(Constants.Graph.NEW_GRAPH)
+        chai.expect(data).to.equal(graph)
+        done()
+      t.send {graph}
