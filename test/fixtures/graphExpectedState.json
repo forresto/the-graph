@@ -1,4 +1,6 @@
 {
+  "center_x": 400,
+  "center_y": 400,
   "edges": [
     {
       "from": {
@@ -24,68 +26,112 @@
     }
   ],
   "groups": [],
+  "height": 800,
+  "initializers": [],
   "inports": [],
+  "margin_bottom": 0,
+  "margin_left": 0,
+  "margin_right": 0,
+  "margin_top": 0,
   "nodes": [
     {
+      "height": 72,
       "icon": "cog",
       "inports": [
         {
+          "key": "foo0:::in",
           "name": "in",
-          "type": "all"
+          "type": "all",
+          "x": 0,
+          "y": 36
         }
       ],
+      "key": "foo0",
       "outports": [
         {
+          "key": "foo0:::out",
           "name": "out",
           "type": "all"
         }
-      ]
+      ],
+      "width": 72,
+      "x": 468,
+      "y": 180
     },
     {
+      "height": 72,
       "icon": "cog",
       "inports": [
         {
+          "key": "bar0:::in0",
           "name": "in0",
-          "type": "all"
+          "type": "all",
+          "x": 0,
+          "y": 36
         }
       ],
+      "key": "bar0",
       "outports": [
         {
+          "key": "bar0:::out0",
           "name": "out0",
           "type": "all"
         }
-      ]
+      ],
+      "width": 72,
+      "x": 612,
+      "y": 180
     },
     {
+      "height": 72,
       "icon": "cog",
       "inports": [
         {
+          "key": "foo1:::in",
           "name": "in",
-          "type": "all"
+          "type": "all",
+          "x": 0,
+          "y": 36
         }
       ],
+      "key": "foo1",
       "outports": [
         {
+          "key": "foo1:::out",
           "name": "out",
           "type": "all"
         }
-      ]
+      ],
+      "width": 72,
+      "x": 180,
+      "y": 36
     },
     {
+      "height": 72,
       "icon": "cog",
       "inports": [
         {
+          "key": "bar1:::in0",
           "name": "in0",
-          "type": "all"
+          "type": "all",
+          "x": 0,
+          "y": 36
         }
       ],
+      "key": "bar1",
       "outports": [
         {
+          "key": "bar1:::out0",
           "name": "out0",
           "type": "all"
         }
-      ]
+      ],
+      "width": 72,
+      "x": 288,
+      "y": 36
     }
   ],
-  "outports": []
+  "outports": [],
+  "scale": 1,
+  "width": 800
 }
