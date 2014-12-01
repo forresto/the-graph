@@ -27,7 +27,8 @@
     "components/RenderGraph.coffee",
     "components/RouteAction.coffee",
     "graphs/flux.json",
-    "graphs/Batch.json"
+    "graphs/Batch.json",
+    "src/Constants.coffee"
   ],
   "json": [
     "graphs/main.json",

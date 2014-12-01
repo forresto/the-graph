@@ -53,9 +53,12 @@ module.exports = ->
         'max_line_length':
           'level': 'ignore'
 
-    'noflo_test':
-      components:
+    # BDD tests on Node.js
+    cafemocha:
+      nodejs:
         src: ['test/*.coffee']
+        options:
+          reporter: 'spec'
 
     'gh-pages':
       options:
@@ -80,7 +83,6 @@ module.exports = ->
   @loadNpmTasks 'grunt-cafe-mocha'
   @loadNpmTasks 'grunt-mocha-phantomjs'
   @loadNpmTasks 'grunt-coffeelint'
-  @loadNpmTasks 'noflo-test'
 
   # Grunt plugins used for deploying
   @loadNpmTasks 'grunt-gh-pages'
@@ -97,6 +99,6 @@ module.exports = ->
     @task.run 'coffeelint'
     # @task.run 'coffee'
     @task.run 'noflo_manifest'
-    @task.run 'noflo_test'
+    @task.run 'cafemocha'
 
   @registerTask 'default', ['test']

@@ -25,11 +25,13 @@
   "devDependencies": {
     "chai": "^1.10.0",
     "grunt": "~0.4.1",
+    "grunt-cafe-mocha": "~0.1.12",
     "grunt-coffeelint": "~0.0.10",
     "grunt-contrib-coffee": "~0.10.1",
     "grunt-contrib-uglify": "~0.2.0",
     "grunt-contrib-watch": "~0.6.1",
     "grunt-gh-pages": "^0.9.1",
+    "grunt-mocha-phantomjs": "~0.2.2",
     "grunt-noflo-browser": "^0.1.8",
     "grunt-noflo-manifest": "~0.1.11",
     "noflo-test": "git://github.com/noflo/noflo-test",
