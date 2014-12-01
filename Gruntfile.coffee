@@ -33,6 +33,14 @@ module.exports = ->
         files:
           "browser/<%=pkg.name%>.js": ['component.json']
 
+    # Generate runner.html
+    # noflo_browser_mocha:
+    #   all:
+    #     options:
+    #       scripts: ["../browser/<%=pkg.name%>.js"]
+    #     files:
+    #       'test/runner.html': ['test/*.js']
+
     # JavaScript minification for the browser
     uglify:
       options:
