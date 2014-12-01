@@ -32,6 +32,7 @@ exports.getComponent = ->
       c.outPorts.graph_action.send action
     c._graphActions = []
     c.outPorts.graph_action.endGroup()
+    c.outPorts.graph_action.disconnect()
 
   c.shutdown = () ->
     c.stopLoop()
@@ -52,6 +53,7 @@ exports.getComponent = ->
       when 'endgroup'
         if c.group is Constants.Graph.NEW_GRAPH
           c.outPorts.new_graph.endGroup()
+          c.outPorts.new_graph.disconnect()
         c.group = null
 
   c.inPorts.add 'tick',
