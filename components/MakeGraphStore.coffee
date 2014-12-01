@@ -35,10 +35,12 @@ exports.getComponent = ->
     addressableOuts = {}
     for edge in graph.edges
       if edge.from.index?
-        hashAddressable edge.from, addressableOuts
+        hashAddressable edge.from, 'out', addressableOuts
       if edge.to.index?
-        hashAddressable edge.to, addressableIns
+        hashAddressable edge.to, 'in', addressableIns
 
+    nodeHash = {}
+    portHash = {}
     for node in graph.nodes
       lib = c._library[node.component]
       nodeState =
@@ -51,9 +53,9 @@ exports.getComponent = ->
         inports: []
         outports: []
       for libIn in lib.inports
-        makePortState node.id, libIn, addressableIns, nodeState.inports
+        makePortState node.id, 'in', libIn, addressableIns, nodeState.inports, portHash
       for libOut in lib.outports
-        makePortState node.id, libOut, addressableOuts, nodeState.outports
+        makePortState node.id, 'out', libOut, addressableOuts, nodeState.outports, portHash
       # Taller nodes if there are >8 ports
       nodeState.height = Math.max(8, nodeState.inports.length, nodeState.outports.length) * 9
       # Port positioning
@@ -63,13 +65,42 @@ exports.getComponent = ->
         inport.y = Math.round(inSpaceing * (index+1))
       outSpaceing = nodeState.height / (nodeState.inports.length+1)
       for outport, index in nodeState.outports
-        inport.x = 0
-        inport.y = Math.round(outSpaceing * (index+1))
+        outport.x = 72
+        outport.y = Math.round(outSpaceing * (index+1))
 
+      nodeHash[node.id] = nodeState
       state.nodes.push nodeState
 
     for edge in graph.edges
-      state.edges.push edge
+      fromKey = "#{edge.from.node}:::out:::#{edge.from.port}"
+      if edge.from.index?
+        fromKey += ":::#{edge.from.index}"
+      toKey = "#{edge.to.node}:::in:::#{edge.to.port}"
+      if edge.to.index?
+        toKey += ":::#{edge.to.index}"
+
+      fromNode = nodeHash[edge.from.node]
+      toNode = nodeHash[edge.to.node]
+      fromPort = portHash[fromKey]
+      toPort = portHash[toKey]
+
+      edgeState =
+        sX: fromNode.x + fromPort.x
+        sY: fromNode.y + fromPort.y
+        tX: toNode.x + toPort.x
+        tY: toNode.y + toPort.y
+        from:
+          node: edge.from.node
+          port: edge.from.port
+        to:
+          node: edge.to.node
+          port: edge.to.port
+        metadata: edge.metadata
+      if edge.from.index?
+        edgeState.from.index = edge.from.index
+      if edge.to.index?
+        edgeState.to.index = edge.to.index
+      state.edges.push edgeState
 
     c._lastState = state
     return state
@@ -81,7 +112,9 @@ exports.getComponent = ->
       c.error new Error Constants.Error.NEED_NOFLO_GRAPH
       return
     c._graph = payload
+    c.outPorts.state.connect()
     c.outPorts.state.send c.buildState()
+    c.outPorts.state.disconnect()
   c.inPorts.add 'library', (event, payload) ->
     return unless event is 'data'
     c._library = payload
@@ -96,30 +129,30 @@ exports.getComponent = ->
 
 # Utils
 
-# Will need reworking if hashports become a thing
-hashAddressable = (side, hash) ->
-  key = "#{side.process}:::#{side.port}"
+# Will need reworking if hashports (non-numeric keys) become a thing
+hashAddressable = (side, direction, hash) ->
+  key = "#{side.node}:::#{direction}:::#{side.port}"
   if hash[key]? and hash[key] < side.index
     hash[key] = side.index
   else
     hash[key] = 0
 
-makePortState = (nodeID, lib, addressableHash, ports) ->
-  key = "#{nodeID}:::#{lib.name}"
+makePortState = (nodeID, direction, lib, addressableHash, ports, portHash) ->
+  key = "#{nodeID}:::#{direction}:::#{lib.name}"
   port =
     key: key
     name: lib.name
     type: lib.type
   if addressableHash[key]?
     count = addressableHash[key]
-    for index in [0..count]
-      ports.push
-        key: "key:::#{index}"
+    for index in [0..count+1]
+      addressablePort =
+        key: "#{key}:::#{index}"
         name: lib.name
         type: lib.type
         index: index
+      ports.push addressablePort
+      portHash[addressablePort.key] = addressablePort
     return
-  if lib.addressable
-    port.key += ":::0"
-    port.index = 0
   ports.push port
+  portHash[port.key] = port

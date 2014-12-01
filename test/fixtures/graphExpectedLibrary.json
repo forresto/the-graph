@@ -23,7 +23,8 @@
     "inports": [
       {
         "name": "in0",
-        "type": "all"
+        "type": "all",
+        "addressable": true
       }
     ],
     "outports": [

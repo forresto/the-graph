@@ -1,137 +1,173 @@
 {
+  "width": 800,
+  "height": 800,
+  "margin_top": 0,
+  "margin_right": 0,
+  "margin_bottom": 0,
+  "margin_left": 0,
   "center_x": 400,
   "center_y": 400,
+  "scale": 1,
+  "groups": [],
   "edges": [
     {
+      "sX": 540,
+      "sY": 216,
+      "tX": 612,
+      "tY": 204,
       "from": {
         "node": "foo0",
         "port": "out"
       },
-      "metadata": {},
       "to": {
         "node": "bar0",
-        "port": "in0"
-      }
+        "port": "in0",
+        "index": 0
+      },
+      "metadata": {}
     },
     {
+      "sX": 252,
+      "sY": 72,
+      "tX": 288,
+      "tY": 60,
       "from": {
         "node": "foo1",
         "port": "out"
       },
-      "metadata": {},
       "to": {
         "node": "bar1",
-        "port": "in0"
-      }
+        "port": "in0",
+        "index": 0
+      },
+      "metadata": {}
     }
   ],
-  "groups": [],
-  "height": 800,
-  "initializers": [],
-  "inports": [],
-  "margin_bottom": 0,
-  "margin_left": 0,
-  "margin_right": 0,
-  "margin_top": 0,
   "nodes": [
     {
-      "height": 72,
-      "icon": "cog",
-      "inports": [
-        {
-          "key": "foo0:::in",
-          "name": "in",
-          "type": "all",
-          "x": 0,
-          "y": 36
-        }
-      ],
       "key": "foo0",
-      "outports": [
-        {
-          "key": "foo0:::out",
-          "name": "out",
-          "type": "all"
-        }
-      ],
-      "width": 72,
+      "icon": "cog",
       "x": 468,
-      "y": 180
-    },
-    {
-      "height": 72,
-      "icon": "cog",
-      "inports": [
-        {
-          "key": "bar0:::in0",
-          "name": "in0",
-          "type": "all",
-          "x": 0,
-          "y": 36
-        }
-      ],
-      "key": "bar0",
-      "outports": [
-        {
-          "key": "bar0:::out0",
-          "name": "out0",
-          "type": "all"
-        }
-      ],
+      "y": 180,
       "width": 72,
-      "x": 612,
-      "y": 180
-    },
-    {
       "height": 72,
-      "icon": "cog",
       "inports": [
         {
-          "key": "foo1:::in",
+          "key": "foo0:::in:::in",
           "name": "in",
           "type": "all",
           "x": 0,
           "y": 36
         }
       ],
-      "key": "foo1",
       "outports": [
         {
-          "key": "foo1:::out",
+          "key": "foo0:::out:::out",
           "name": "out",
-          "type": "all"
+          "type": "all",
+          "x": 72,
+          "y": 36
         }
-      ],
-      "width": 72,
-      "x": 180,
-      "y": 36
+      ]
     },
     {
-      "height": 72,
+      "key": "bar0",
       "icon": "cog",
+      "x": 612,
+      "y": 180,
+      "width": 72,
+      "height": 72,
       "inports": [
         {
-          "key": "bar1:::in0",
+          "key": "bar0:::in:::in0:::0",
           "name": "in0",
+          "type": "all",
+          "index": 0,
+          "x": 0,
+          "y": 24
+        },
+        {
+          "key": "bar0:::in:::in0:::1",
+          "name": "in0",
+          "type": "all",
+          "index": 1,
+          "x": 0,
+          "y": 48
+        }
+      ],
+      "outports": [
+        {
+          "key": "bar0:::out:::out0",
+          "name": "out0",
+          "type": "all",
+          "x": 72,
+          "y": 24
+        }
+      ]
+    },
+    {
+      "key": "foo1",
+      "icon": "cog",
+      "x": 180,
+      "y": 36,
+      "width": 72,
+      "height": 72,
+      "inports": [
+        {
+          "key": "foo1:::in:::in",
+          "name": "in",
           "type": "all",
           "x": 0,
           "y": 36
         }
       ],
-      "key": "bar1",
       "outports": [
         {
-          "key": "bar1:::out0",
-          "name": "out0",
-          "type": "all"
+          "key": "foo1:::out:::out",
+          "name": "out",
+          "type": "all",
+          "x": 72,
+          "y": 36
+        }
+      ]
+    },
+    {
+      "key": "bar1",
+      "icon": "cog",
+      "x": 288,
+      "y": 36,
+      "width": 72,
+      "height": 72,
+      "inports": [
+        {
+          "key": "bar1:::in:::in0:::0",
+          "name": "in0",
+          "type": "all",
+          "index": 0,
+          "x": 0,
+          "y": 24
+        },
+        {
+          "key": "bar1:::in:::in0:::1",
+          "name": "in0",
+          "type": "all",
+          "index": 1,
+          "x": 0,
+          "y": 48
         }
       ],
-      "width": 72,
-      "x": 288,
-      "y": 36
+      "outports": [
+        {
+          "key": "bar1:::out:::out0",
+          "name": "out0",
+          "type": "all",
+          "x": 72,
+          "y": 24
+        }
+      ]
     }
   ],
-  "outports": [],
-  "scale": 1,
-  "width": 800
+  "initializers": [],
+  "inports": [],
+  "outports": []
 }

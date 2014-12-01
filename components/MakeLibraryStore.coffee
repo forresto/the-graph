@@ -11,9 +11,11 @@ exports.getComponent = ->
     components = makeInitialComponents graph
     for component in components
       c.registerComponent component
+    c.outPorts.library.connect()
     c.outPorts.library.beginGroup Constants.Library.NEW_LIBRARY
     c.outPorts.library.send c._data
     c.outPorts.library.endGroup()
+    c.outPorts.library.disconnect()
   c.registerComponent = (definition) ->
     mergeComponentDefinition definition, c._data
 
@@ -74,6 +76,8 @@ checkPort = (graphItem, componentPorts) ->
   newDef =
     name: graphItem.port
     type: 'all'
+  if graphItem.index?
+    newDef.addressable = true
   return newDef
 chackAndMergePorts = (definitionPorts, componentPorts) ->
   for port, index in definitionPorts
@@ -82,6 +86,8 @@ chackAndMergePorts = (definitionPorts, componentPorts) ->
       if cPort.name is port.name
         if port.type? and port.type isnt cPort.type
           cPort.type = port.type
+        if port.addressable? and port.addressable isnt cPort.addressable
+          cPort.addressable = port.addressable
         exists = true
     unless exists
       componentPorts.splice index, 0, port

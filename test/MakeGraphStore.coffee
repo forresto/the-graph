@@ -26,9 +26,8 @@ describe 'MakeGraphStore', ->
 
   describe 'When receiving a graph', ->
     it 'should send the expected graph state', (done) ->
-      t.outs.state.on 'data', (data) ->
+      t.receive 'state', (data) ->
+        # console.log JSON.stringify data, null, 2
         chai.expect(data).to.deep.equal expected
-        # chai.expect(data).to.deep.equal {}
         done()
-      t.send 'library', library
-      t.send 'graph', graph
+      t.send {library, graph}

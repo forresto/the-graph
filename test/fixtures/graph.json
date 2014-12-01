@@ -104,7 +104,8 @@
             },
             "tgt": {
                 "process": "bar0",
-                "port": "in0"
+                "port": "in0",
+                "index": 0
             },
             "metadata": {}
         },
@@ -115,7 +116,8 @@
             },
             "tgt": {
                 "process": "bar1",
-                "port": "in0"
+                "port": "in0",
+                "index": 0
             },
             "metadata": {}
         }
