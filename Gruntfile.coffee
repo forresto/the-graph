@@ -110,3 +110,4 @@ module.exports = ->
     @task.run 'cafemocha'
 
   @registerTask 'default', ['test']
+  @registerTask 'dev', ['test', 'watch']
