@@ -4,6 +4,7 @@ node_js:
 before_script:
 - npm install -g grunt-cli
 after_success:
+- grunt build
 - grunt gh-pages
 env:
   global:

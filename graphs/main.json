@@ -3,7 +3,7 @@
         "name": "main",
         "environment": {
             "type": "noflo-browser",
-            "content": ""
+            "content": "<div id=\"container\">hello</div>"
         },
         "icon": ""
     },
