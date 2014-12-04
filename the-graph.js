@@ -398,7 +398,11 @@ require.register("jashkenas-underscore/underscore.js", function(exports, require
   var
     nativeIsArray      = Array.isArray,
     nativeKeys         = Object.keys,
-    nativeBind         = FuncProto.bind;
+    nativeBind         = FuncProto.bind,
+    nativeCreate       = Object.create;
+
+  // Reusable constructor function for prototype setting.
+  var Ctor = function(){};
 
   // Create a safe reference to the Underscore object for use below.
   var _ = function(obj) {
@@ -456,7 +460,35 @@ require.register("jashkenas-underscore/underscore.js", function(exports, require
     return _.property(value);
   };
   _.iteratee = function(value, context) {
-    return cb(value, context);
+    return cb(value, context, Infinity);
+  };
+
+  // An internal function for creating assigner functions.
+  var createAssigner = function(keysFunc) {
+    return function(obj) {
+      var length = arguments.length;
+      if (length < 2 || obj == null) return obj;
+      for (var index = 0; index < length; index++) {
+        var source = arguments[index],
+            keys = keysFunc(source),
+            l = keys.length;
+        for (var i = 0; i < l; i++) {
+          var key = keys[i];
+          obj[key] = source[key];
+        }
+      }
+      return obj;
+    };
+  };
+
+  // An internal function for creating a new object that inherts from another.
+  var baseCreate = function(prototype) {
+    if (!_.isObject(prototype)) return {};
+    if (nativeCreate) return nativeCreate(prototype);
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
   };
 
   // Collection Functions
@@ -595,8 +627,8 @@ require.register("jashkenas-underscore/underscore.js", function(exports, require
   };
 
   // Determine if the array or object contains a given value (using `===`).
-  // Aliased as `include`.
-  _.contains = _.include = function(obj, target) {
+  // Aliased as `includes` and `include`.
+  _.contains = _.includes = _.include = function(obj, target) {
     if (obj == null) return false;
     if (obj.length !== +obj.length) obj = _.values(obj);
     return _.indexOf(obj, target) >= 0;
@@ -1019,16 +1051,11 @@ require.register("jashkenas-underscore/underscore.js", function(exports, require
   // Function (ahem) Functions
   // ------------------
 
-  // Reusable constructor function for prototype setting.
-  var Ctor = function(){};
-
   // Determines whether to execute a function as a constructor
   // or a normal function with the provided arguments
   var executeBound = function(sourceFunc, boundFunc, context, callingContext, args) {
     if (!(callingContext instanceof boundFunc)) return sourceFunc.apply(context, args);
-    Ctor.prototype = sourceFunc.prototype;
-    var self = new Ctor;
-    Ctor.prototype = null;
+    var self = baseCreate(sourceFunc.prototype);
     var result = sourceFunc.apply(self, args);
     if (_.isObject(result)) return result;
     return self;
@@ -1039,7 +1066,7 @@ require.register("jashkenas-underscore/underscore.js", function(exports, require
   // available.
   _.bind = function(func, context) {
     if (nativeBind && func.bind === nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
-    if (!_.isFunction(func)) throw TypeError('Bind must be called on a function');
+    if (!_.isFunction(func)) throw new TypeError('Bind must be called on a function');
     var args = slice.call(arguments, 2);
     return function bound() {
       return executeBound(func, bound, context, this, args.concat(slice.call(arguments)));
@@ -1235,22 +1262,38 @@ require.register("jashkenas-underscore/underscore.js", function(exports, require
   var nonEnumerableProps = ['constructor', 'valueOf', 'isPrototypeOf', 'toString',
                       'propertyIsEnumerable', 'hasOwnProperty', 'toLocaleString'];
 
-  // Retrieve the names of an object's properties.
+  function collectNonEnumProps(obj, keys) {
+    var nonEnumIdx = nonEnumerableProps.length;
+    var proto = typeof obj.constructor === 'function' ? FuncProto : ObjProto;
+
+    while (nonEnumIdx--) {
+      var prop = nonEnumerableProps[nonEnumIdx];
+      if (prop === 'constructor' ? _.has(obj, prop) : prop in obj &&
+        obj[prop] !== proto[prop] && !_.contains(keys, prop)) {
+        keys.push(prop);
+      }
+    }
+  }
+
+  // Retrieve the names of an object's own properties.
   // Delegates to **ECMAScript 5**'s native `Object.keys`
   _.keys = function(obj) {
     if (!_.isObject(obj)) return [];
     if (nativeKeys) return nativeKeys(obj);
     var keys = [];
     for (var key in obj) if (_.has(obj, key)) keys.push(key);
-
     // Ahem, IE < 9.
-    if (hasEnumBug) {
-      var nonEnumIdx = nonEnumerableProps.length;
-      while (nonEnumIdx--) {
-        var prop = nonEnumerableProps[nonEnumIdx];
-        if (_.has(obj, prop) && !_.contains(keys, prop)) keys.push(prop);
-      }
-    }
+    if (hasEnumBug) collectNonEnumProps(obj, keys);
+    return keys;
+  };
+
+  // Retrieve all the property names of an object.
+  _.keysIn = function(obj) {
+    if (!_.isObject(obj)) return [];
+    var keys = [];
+    for (var key in obj) keys.push(key);
+    // Ahem, IE < 9.
+    if (hasEnumBug) collectNonEnumProps(obj, keys);
     return keys;
   };
 
@@ -1297,17 +1340,11 @@ require.register("jashkenas-underscore/underscore.js", function(exports, require
   };
 
   // Extend a given object with all the properties in passed-in object(s).
-  _.extend = function(obj) {
-    if (!_.isObject(obj)) return obj;
-    var source, prop;
-    for (var i = 1, length = arguments.length; i < length; i++) {
-      source = arguments[i];
-      for (prop in source) {
-        obj[prop] = source[prop];
-      }
-    }
-    return obj;
-  };
+  _.extend = createAssigner(_.keysIn);
+
+  // Assigns a given object with all the own properties in the passed-in object(s)
+  // (https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object/assign)
+  _.assign = createAssigner(_.keys);
 
   // Returns the first key on an object that passes a predicate test
   _.findKey = function(obj, predicate, context) {
@@ -1363,6 +1400,15 @@ require.register("jashkenas-underscore/underscore.js", function(exports, require
       }
     }
     return obj;
+  };
+
+  // Creates an object that inherits from the given prototype object.
+  // If additional properties are provided then they will be added to the
+  // created object.
+  _.create = function(prototype, props) {
+    var result = baseCreate(prototype);
+    if (props) _.assign(result, props);
+    return result;
   };
 
   // Create a (shallow-cloned) duplicate of an object.
@@ -1439,36 +1485,32 @@ require.register("jashkenas-underscore/underscore.js", function(exports, require
     // Add the first object to the stack of traversed objects.
     aStack.push(a);
     bStack.push(b);
-    var size, result;
+
     // Recursively compare objects and arrays.
     if (areArrays) {
       // Compare array lengths to determine if a deep comparison is necessary.
-      size = a.length;
-      result = size === b.length;
-      if (result) {
-        // Deep compare the contents, ignoring non-numeric properties.
-        while (size--) {
-          if (!(result = eq(a[size], b[size], aStack, bStack))) break;
-        }
+      length = a.length;
+      if (length !== b.length) return false;
+      // Deep compare the contents, ignoring non-numeric properties.
+      while (length--) {
+        if (!(eq(a[length], b[length], aStack, bStack))) return false;
       }
     } else {
       // Deep compare objects.
       var keys = _.keys(a), key;
-      size = keys.length;
+      length = keys.length;
       // Ensure that both objects contain the same number of properties before comparing deep equality.
-      result = _.keys(b).length === size;
-      if (result) {
-        while (size--) {
-          // Deep compare each member
-          key = keys[size];
-          if (!(result = _.has(b, key) && eq(a[key], b[key], aStack, bStack))) break;
-        }
+      if (_.keys(b).length !== length) return false;
+      while (length--) {
+        // Deep compare each member
+        key = keys[length];
+        if (!(_.has(b, key) && eq(a[key], b[key], aStack, bStack))) return false;
       }
     }
     // Remove the first object from the stack of traversed objects.
     aStack.pop();
     bStack.pop();
-    return result;
+    return true;
   };
 
   // Perform a deep comparison to check if two objects are equal.
@@ -1582,6 +1624,13 @@ require.register("jashkenas-underscore/underscore.js", function(exports, require
   _.property = function(key) {
     return function(obj) {
       return obj == null ? void 0 : obj[key];
+    };
+  };
+
+  // Generates a function for a given object that returns a given property (including those of ancestors)
+  _.propertyOf = function(obj) {
+    return obj == null ? function(){} : function(key) {
+      return obj[key];
     };
   };
 
@@ -14531,7 +14580,7 @@ module.exports = function(address, options, dontstart) {
 };
 
 });
-require.register("noflo-browser-app/index.js", function(exports, require, module){
+require.register("the-graph/index.js", function(exports, require, module){
 /*
  * This file can be used for general library features of noflo-browser-app.
  *
@@ -14540,16 +14589,567 @@ require.register("noflo-browser-app/index.js", function(exports, require, module
  */
 
 });
-require.register("noflo-browser-app/graphs/main.json", function(exports, require, module){
-module.exports = JSON.parse('{"properties":{"name":"main","environment":{"type":"noflo-browser","content":"<button id=\'button\'>Go!</button>\\n<p id=\'message\'></p>"},"icon":""},"inports":{},"outports":{},"groups":[],"processes":{"dom/GetElement_7amk2":{"component":"dom/GetElement","metadata":{"label":"dom/GetElement","x":252,"y":180,"width":72,"height":72}},"core/Output_cg49":{"component":"core/Output","metadata":{"label":"core/Output","x":432,"y":360,"width":72,"height":72}},"dom/WriteHtml_fpz6j":{"component":"dom/WriteHtml","metadata":{"label":"dom/WriteHtml","x":684,"y":288,"width":72,"height":72}},"dom/GetElement_xvz54":{"component":"dom/GetElement","metadata":{"label":"dom/GetElement","x":252,"y":288,"width":72,"height":72}},"interaction/ListenMouse_1l373":{"component":"interaction/ListenMouse","metadata":{"label":"interaction/ListenMouse","x":432,"y":180,"width":72,"height":72}},"core/Kick_ey1nh":{"component":"core/Kick","metadata":{"label":"core/Kick","x":576,"y":180,"width":72,"height":72}}},"connections":[{"src":{"process":"dom/GetElement_xvz54","port":"element"},"tgt":{"process":"dom/WriteHtml_fpz6j","port":"container"},"metadata":{}},{"src":{"process":"dom/GetElement_7amk2","port":"element"},"tgt":{"process":"interaction/ListenMouse_1l373","port":"element"},"metadata":{"route":0}},{"src":{"process":"dom/GetElement_7amk2","port":"error"},"tgt":{"process":"core/Output_cg49","port":"in"},"metadata":{"route":1}},{"src":{"process":"dom/GetElement_xvz54","port":"error"},"tgt":{"process":"core/Output_cg49","port":"in"},"metadata":{"route":1}},{"src":{"process":"interaction/ListenMouse_1l373","port":"click"},"tgt":{"process":"core/Kick_ey1nh","port":"in"},"metadata":{}},{"src":{"process":"core/Kick_ey1nh","port":"out"},"tgt":{"process":"dom/WriteHtml_fpz6j","port":"html"},"metadata":{}},{"data":"#button","tgt":{"process":"dom/GetElement_7amk2","port":"selector"}},{"data":"#message","tgt":{"process":"dom/GetElement_xvz54","port":"selector"}},{"data":"Hello World!","tgt":{"process":"core/Kick_ey1nh","port":"data"}}]}');
+require.register("the-graph/graphs/main.json", function(exports, require, module){
+module.exports = JSON.parse('{"properties":{"name":"main","environment":{"type":"noflo-browser","content":"<div id=\\"container\\">hello</div>"},"icon":""},"inports":{},"outports":{},"groups":[],"processes":{"the-graph-canvas/flux":{"component":"the-graph-canvas/flux","metadata":{"label":"flux","x":396,"y":144,"width":72,"height":72}}},"connections":[]}');
 });
-require.register("noflo-browser-app/graphs/main.json", function(exports, require, module){
-module.exports = JSON.parse('{"properties":{"name":"main","environment":{"type":"noflo-browser","content":"<button id=\'button\'>Go!</button>\\n<p id=\'message\'></p>"},"icon":""},"inports":{},"outports":{},"groups":[],"processes":{"dom/GetElement_7amk2":{"component":"dom/GetElement","metadata":{"label":"dom/GetElement","x":252,"y":180,"width":72,"height":72}},"core/Output_cg49":{"component":"core/Output","metadata":{"label":"core/Output","x":432,"y":360,"width":72,"height":72}},"dom/WriteHtml_fpz6j":{"component":"dom/WriteHtml","metadata":{"label":"dom/WriteHtml","x":684,"y":288,"width":72,"height":72}},"dom/GetElement_xvz54":{"component":"dom/GetElement","metadata":{"label":"dom/GetElement","x":252,"y":288,"width":72,"height":72}},"interaction/ListenMouse_1l373":{"component":"interaction/ListenMouse","metadata":{"label":"interaction/ListenMouse","x":432,"y":180,"width":72,"height":72}},"core/Kick_ey1nh":{"component":"core/Kick","metadata":{"label":"core/Kick","x":576,"y":180,"width":72,"height":72}}},"connections":[{"src":{"process":"dom/GetElement_xvz54","port":"element"},"tgt":{"process":"dom/WriteHtml_fpz6j","port":"container"},"metadata":{}},{"src":{"process":"dom/GetElement_7amk2","port":"element"},"tgt":{"process":"interaction/ListenMouse_1l373","port":"element"},"metadata":{"route":0}},{"src":{"process":"dom/GetElement_7amk2","port":"error"},"tgt":{"process":"core/Output_cg49","port":"in"},"metadata":{"route":1}},{"src":{"process":"dom/GetElement_xvz54","port":"error"},"tgt":{"process":"core/Output_cg49","port":"in"},"metadata":{"route":1}},{"src":{"process":"interaction/ListenMouse_1l373","port":"click"},"tgt":{"process":"core/Kick_ey1nh","port":"in"},"metadata":{}},{"src":{"process":"core/Kick_ey1nh","port":"out"},"tgt":{"process":"dom/WriteHtml_fpz6j","port":"html"},"metadata":{}},{"data":"#button","tgt":{"process":"dom/GetElement_7amk2","port":"selector"}},{"data":"#message","tgt":{"process":"dom/GetElement_xvz54","port":"selector"}},{"data":"Hello World!","tgt":{"process":"core/Kick_ey1nh","port":"data"}}]}');
+require.register("the-graph/graphs/flux.json", function(exports, require, module){
+module.exports = JSON.parse('{"properties":{"name":"flux","environment":{"type":"all"}},"inports":{"container":{"process":"Render","port":"container","metadata":{"x":720,"y":0,"width":72,"height":72}},"noflo_graph":{"process":"MakeNofloAction","port":"graph","metadata":{"x":0,"y":-72,"width":72,"height":72}},"runtime_action":{"process":"MakeRuntimeAction","port":"in","metadata":{"x":0,"y":288,"width":72,"height":72}},"graph_action":{"process":"RouteAction","port":"in","metadata":{"x":0,"y":108,"width":72,"height":72}}},"outports":{},"groups":[],"processes":{"MakeViewAction":{"component":"the-graph-canvas/MakeViewAction","metadata":{"label":"MakeViewAction","x":288,"y":144,"width":72,"height":72}},"MakeNofloAction":{"component":"the-graph-canvas/MakeNofloAction","metadata":{"label":"MakeNofloAction","x":288,"y":0,"width":72,"height":72}},"MakeRuntimeAction":{"component":"the-graph-canvas/MakeRuntimeAction","metadata":{"label":"MakeRuntimeAction","x":288,"y":288,"width":72,"height":72}},"RouteAction":{"component":"the-graph-canvas/RouteAction","metadata":{"label":"RouteAction","x":144,"y":72,"width":72,"height":72}},"Dispatch":{"component":"the-graph-canvas/Dispatch","metadata":{"label":"Dispatch","x":432,"y":144,"width":72,"height":72}},"StoreGraph":{"component":"the-graph-canvas/MakeGraphStore","metadata":{"label":"StoreGraph","x":720,"y":180,"width":72,"height":72}},"StoreLibrary":{"component":"the-graph-canvas/MakeLibraryStore","metadata":{"label":"StoreLibrary","x":576,"y":72,"width":72,"height":72}},"Render":{"component":"the-graph-canvas/RenderGraph","metadata":{"label":"Render","x":864,"y":72,"width":72,"height":72}}},"connections":[{"src":{"process":"RouteAction","port":"noflo"},"tgt":{"process":"MakeNofloAction","port":"in"},"metadata":{}},{"src":{"process":"RouteAction","port":"view"},"tgt":{"process":"MakeViewAction","port":"in"},"metadata":{}},{"src":{"process":"MakeNofloAction","port":"action"},"tgt":{"process":"Dispatch","port":"action"},"metadata":{}},{"src":{"process":"MakeViewAction","port":"action"},"tgt":{"process":"Dispatch","port":"action"},"metadata":{}},{"src":{"process":"MakeRuntimeAction","port":"action"},"tgt":{"process":"Dispatch","port":"action"},"metadata":{}},{"src":{"process":"Dispatch","port":"new_graph"},"tgt":{"process":"StoreLibrary","port":"graph"},"metadata":{"route":0}},{"src":{"process":"StoreLibrary","port":"library"},"tgt":{"process":"StoreGraph","port":"library"},"metadata":{}},{"src":{"process":"Dispatch","port":"lib_action"},"tgt":{"process":"StoreLibrary","port":"action"},"metadata":{}},{"src":{"process":"Dispatch","port":"new_graph"},"tgt":{"process":"StoreGraph","port":"graph"},"metadata":{"route":0}},{"src":{"process":"Dispatch","port":"graph_action"},"tgt":{"process":"StoreGraph","port":"action"},"metadata":{"route":null}},{"src":{"process":"StoreGraph","port":"state"},"tgt":{"process":"Render","port":"state"},"metadata":{}},{"src":{"process":"Render","port":"event"},"tgt":{"process":"RouteAction","port":"in"},"metadata":{}}]}');
 });
-require.register("noflo-browser-app/component.json", function(exports, require, module){
-module.exports = JSON.parse('{"name":"noflo-browser-app","description":"The best project ever.","author":"Jon Nordby <jononor@gmail.com>","repo":"noflo/noflo-browser-app","version":"0.1.0","keywords":[],"dependencies":{"noflo/noflo":"*","noflo/noflo-dom":"*","noflo/noflo-core":"*","noflo/noflo-interaction":"*","noflo/noflo-runtime-webrtc":"*"},"remotes":["https://raw.githubusercontent.com"],"scripts":["index.js","components/DoSomething.js","graphs/main.json"],"json":["graphs/main.json","component.json"],"noflo":{"graphs":{"main":"graphs/main.json"},"components":{"DoSomething":"components/DoSomething.js"}}}');
+require.register("the-graph/graphs/Batch.json", function(exports, require, module){
+module.exports = JSON.parse('{"properties":{"name":"Batch","environment":{"type":"noflo-browser"}},"inports":{"in":{"process":"flow/HasGroup_n21wd","port":"in","metadata":{"x":0,"y":72,"width":72,"height":72}}},"outports":{"new_graph":{"process":"flow/HasGroup_n21wd","port":"yes","metadata":{"x":720,"y":0,"width":72,"height":72}},"graph_action":{"process":"flow/CollectUntilIdle_f96qm","port":"out","metadata":{"x":720,"y":144,"width":72,"height":72}},"library_action":{"process":"flow/CollectUntilIdle_37hun","port":"out","metadata":{"x":720,"y":288,"width":72,"height":72}}},"groups":[],"processes":{"flow/HasGroup_n21wd":{"component":"flow/HasGroup","metadata":{"label":"flow/HasGroup","x":144,"y":72,"width":72,"height":72}},"flow/CollectUntilIdle_f96qm":{"component":"flow/CollectUntilIdle","metadata":{"label":"flow/CollectUntilIdle","x":576,"y":144,"width":72,"height":72}},"flow/HasGroup_rpm8a":{"component":"flow/HasGroup","metadata":{"label":"flow/HasGroup","x":288,"y":144,"width":72,"height":72}},"flow/HasGroup_2m987":{"component":"flow/HasGroup","metadata":{"label":"flow/HasGroup","x":432,"y":252,"width":72,"height":72}},"flow/CollectUntilIdle_37hun":{"component":"flow/CollectUntilIdle","metadata":{"label":"flow/CollectUntilIdle","x":576,"y":252,"width":72,"height":72}}},"connections":[{"src":{"process":"flow/HasGroup_n21wd","port":"no"},"tgt":{"process":"flow/HasGroup_rpm8a","port":"in"},"metadata":{}},{"src":{"process":"flow/HasGroup_rpm8a","port":"yes"},"tgt":{"process":"flow/CollectUntilIdle_f96qm","port":"in"},"metadata":{}},{"src":{"process":"flow/HasGroup_rpm8a","port":"no"},"tgt":{"process":"flow/HasGroup_2m987","port":"in"},"metadata":{}},{"src":{"process":"flow/HasGroup_2m987","port":"yes"},"tgt":{"process":"flow/CollectUntilIdle_37hun","port":"in"},"metadata":{}},{"data":"new graph","tgt":{"process":"flow/HasGroup_n21wd","port":"group"}},{"data":"change graph","tgt":{"process":"flow/HasGroup_rpm8a","port":"group"}},{"data":"library","tgt":{"process":"flow/HasGroup_2m987","port":"regexp"}}]}');
 });
-require.register("noflo-browser-app/components/DoSomething.js", function(exports, require, module){
+require.register("the-graph/graphs/main.json", function(exports, require, module){
+module.exports = JSON.parse('{"properties":{"name":"main","environment":{"type":"noflo-browser","content":"<div id=\\"container\\">hello</div>"},"icon":""},"inports":{},"outports":{},"groups":[],"processes":{"the-graph-canvas/flux":{"component":"the-graph-canvas/flux","metadata":{"label":"flux","x":396,"y":144,"width":72,"height":72}}},"connections":[]}');
+});
+require.register("the-graph/component.json", function(exports, require, module){
+module.exports = JSON.parse('{"name":"the-graph","description":"","author":"Forrest Oliphant","repo":"forresto/the-graph-flux","version":"0.1.0","keywords":[],"dependencies":{"noflo/noflo":"*","noflo/noflo-dom":"*","noflo/noflo-core":"*","noflo/noflo-interaction":"*","noflo/noflo-runtime-webrtc":"*"},"remotes":["https://raw.githubusercontent.com"],"scripts":["index.js","components/MakeLibraryStore.js","graphs/main.json","components/Dispatch.js","components/MakeGraphStore.js","components/MakeNofloAction.js","components/MakeRuntimeAction.js","components/MakeViewAction.js","components/RenderGraph.js","components/RouteAction.js","graphs/flux.json","graphs/Batch.json","src/Constants.js"],"json":["graphs/main.json","component.json","graphs/flux.json","graphs/Batch.json"],"noflo":{"graphs":{"Batch":"graphs/Batch.json","flux":"graphs/flux.json","main":"graphs/main.json"},"components":{"Dispatch":"components/Dispatch.js","MakeGraphStore":"components/MakeGraphStore.js","MakeLibraryStore":"components/MakeLibraryStore.js","MakeNofloAction":"components/MakeNofloAction.js","MakeRuntimeAction":"components/MakeRuntimeAction.js","MakeViewAction":"components/MakeViewAction.js","RenderGraph":"components/RenderGraph.js","RouteAction":"components/RouteAction.js"}}}');
+});
+require.register("the-graph/graphs/flux.json", function(exports, require, module){
+module.exports = JSON.parse('{"properties":{"name":"flux","environment":{"type":"all"}},"inports":{"container":{"process":"Render","port":"container","metadata":{"x":720,"y":0,"width":72,"height":72}},"noflo_graph":{"process":"MakeNofloAction","port":"graph","metadata":{"x":0,"y":-72,"width":72,"height":72}},"runtime_action":{"process":"MakeRuntimeAction","port":"in","metadata":{"x":0,"y":288,"width":72,"height":72}},"graph_action":{"process":"RouteAction","port":"in","metadata":{"x":0,"y":108,"width":72,"height":72}}},"outports":{},"groups":[],"processes":{"MakeViewAction":{"component":"the-graph-canvas/MakeViewAction","metadata":{"label":"MakeViewAction","x":288,"y":144,"width":72,"height":72}},"MakeNofloAction":{"component":"the-graph-canvas/MakeNofloAction","metadata":{"label":"MakeNofloAction","x":288,"y":0,"width":72,"height":72}},"MakeRuntimeAction":{"component":"the-graph-canvas/MakeRuntimeAction","metadata":{"label":"MakeRuntimeAction","x":288,"y":288,"width":72,"height":72}},"RouteAction":{"component":"the-graph-canvas/RouteAction","metadata":{"label":"RouteAction","x":144,"y":72,"width":72,"height":72}},"Dispatch":{"component":"the-graph-canvas/Dispatch","metadata":{"label":"Dispatch","x":432,"y":144,"width":72,"height":72}},"StoreGraph":{"component":"the-graph-canvas/MakeGraphStore","metadata":{"label":"StoreGraph","x":720,"y":180,"width":72,"height":72}},"StoreLibrary":{"component":"the-graph-canvas/MakeLibraryStore","metadata":{"label":"StoreLibrary","x":576,"y":72,"width":72,"height":72}},"Render":{"component":"the-graph-canvas/RenderGraph","metadata":{"label":"Render","x":864,"y":72,"width":72,"height":72}}},"connections":[{"src":{"process":"RouteAction","port":"noflo"},"tgt":{"process":"MakeNofloAction","port":"in"},"metadata":{}},{"src":{"process":"RouteAction","port":"view"},"tgt":{"process":"MakeViewAction","port":"in"},"metadata":{}},{"src":{"process":"MakeNofloAction","port":"action"},"tgt":{"process":"Dispatch","port":"action"},"metadata":{}},{"src":{"process":"MakeViewAction","port":"action"},"tgt":{"process":"Dispatch","port":"action"},"metadata":{}},{"src":{"process":"MakeRuntimeAction","port":"action"},"tgt":{"process":"Dispatch","port":"action"},"metadata":{}},{"src":{"process":"Dispatch","port":"new_graph"},"tgt":{"process":"StoreLibrary","port":"graph"},"metadata":{"route":0}},{"src":{"process":"StoreLibrary","port":"library"},"tgt":{"process":"StoreGraph","port":"library"},"metadata":{}},{"src":{"process":"Dispatch","port":"lib_action"},"tgt":{"process":"StoreLibrary","port":"action"},"metadata":{}},{"src":{"process":"Dispatch","port":"new_graph"},"tgt":{"process":"StoreGraph","port":"graph"},"metadata":{"route":0}},{"src":{"process":"Dispatch","port":"graph_action"},"tgt":{"process":"StoreGraph","port":"action"},"metadata":{"route":null}},{"src":{"process":"StoreGraph","port":"state"},"tgt":{"process":"Render","port":"state"},"metadata":{}},{"src":{"process":"Render","port":"event"},"tgt":{"process":"RouteAction","port":"in"},"metadata":{}}]}');
+});
+require.register("the-graph/graphs/Batch.json", function(exports, require, module){
+module.exports = JSON.parse('{"properties":{"name":"Batch","environment":{"type":"noflo-browser"}},"inports":{"in":{"process":"flow/HasGroup_n21wd","port":"in","metadata":{"x":0,"y":72,"width":72,"height":72}}},"outports":{"new_graph":{"process":"flow/HasGroup_n21wd","port":"yes","metadata":{"x":720,"y":0,"width":72,"height":72}},"graph_action":{"process":"flow/CollectUntilIdle_f96qm","port":"out","metadata":{"x":720,"y":144,"width":72,"height":72}},"library_action":{"process":"flow/CollectUntilIdle_37hun","port":"out","metadata":{"x":720,"y":288,"width":72,"height":72}}},"groups":[],"processes":{"flow/HasGroup_n21wd":{"component":"flow/HasGroup","metadata":{"label":"flow/HasGroup","x":144,"y":72,"width":72,"height":72}},"flow/CollectUntilIdle_f96qm":{"component":"flow/CollectUntilIdle","metadata":{"label":"flow/CollectUntilIdle","x":576,"y":144,"width":72,"height":72}},"flow/HasGroup_rpm8a":{"component":"flow/HasGroup","metadata":{"label":"flow/HasGroup","x":288,"y":144,"width":72,"height":72}},"flow/HasGroup_2m987":{"component":"flow/HasGroup","metadata":{"label":"flow/HasGroup","x":432,"y":252,"width":72,"height":72}},"flow/CollectUntilIdle_37hun":{"component":"flow/CollectUntilIdle","metadata":{"label":"flow/CollectUntilIdle","x":576,"y":252,"width":72,"height":72}}},"connections":[{"src":{"process":"flow/HasGroup_n21wd","port":"no"},"tgt":{"process":"flow/HasGroup_rpm8a","port":"in"},"metadata":{}},{"src":{"process":"flow/HasGroup_rpm8a","port":"yes"},"tgt":{"process":"flow/CollectUntilIdle_f96qm","port":"in"},"metadata":{}},{"src":{"process":"flow/HasGroup_rpm8a","port":"no"},"tgt":{"process":"flow/HasGroup_2m987","port":"in"},"metadata":{}},{"src":{"process":"flow/HasGroup_2m987","port":"yes"},"tgt":{"process":"flow/CollectUntilIdle_37hun","port":"in"},"metadata":{}},{"data":"new graph","tgt":{"process":"flow/HasGroup_n21wd","port":"group"}},{"data":"change graph","tgt":{"process":"flow/HasGroup_rpm8a","port":"group"}},{"data":"library","tgt":{"process":"flow/HasGroup_2m987","port":"regexp"}}]}');
+});
+require.register("the-graph/components/MakeLibraryStore.js", function(exports, require, module){
+var Constants, chackAndMergePorts, checkPort, makeInitialComponents, mergeComponentDefinition, noflo,
+  __hasProp = {}.hasOwnProperty;
+
+noflo = require('noflo');
+
+Constants = require('../src/Constants');
+
+exports.getComponent = function() {
+  var c;
+  c = new noflo.Component;
+  c.icon = 'hdd-o';
+  c.description = 'Infers the initial library from the starting graph.';
+  c._data = null;
+  c.processGraph = function(graph) {
+    var component, components, _i, _len;
+    c._data = {};
+    components = makeInitialComponents(graph);
+    for (_i = 0, _len = components.length; _i < _len; _i++) {
+      component = components[_i];
+      c.registerComponent(component);
+    }
+    c.outPorts.library.connect();
+    c.outPorts.library.beginGroup(Constants.Library.NEW_LIBRARY);
+    c.outPorts.library.send(c._data);
+    c.outPorts.library.endGroup();
+    return c.outPorts.library.disconnect();
+  };
+  c.registerComponent = function(definition) {
+    return mergeComponentDefinition(definition, c._data);
+  };
+  c.inPorts.add('graph', function(event, payload) {
+    var graph;
+    if (event !== 'data') {
+      return;
+    }
+    graph = payload;
+    if ((graph != null ? graph.addNode : void 0) == null) {
+      c.error(new Error(Constants.Error.NEED_NOFLO_GRAPH));
+      return;
+    }
+    return c.processGraph(graph);
+  });
+  c.inPorts.add('action');
+  c.outPorts.add('library');
+  c.outPorts.add('error');
+  return c;
+};
+
+makeInitialComponents = function(graph) {
+  var component, components, edge, iip, inport, key, newDef, node, outport, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2, _ref3, _ref4;
+  components = [];
+  _ref = graph.nodes;
+  for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+    node = _ref[_i];
+    component = {
+      name: node.component,
+      icon: 'cog',
+      description: '',
+      inports: [],
+      outports: []
+    };
+    _ref1 = graph.inports;
+    for (key in _ref1) {
+      if (!__hasProp.call(_ref1, key)) continue;
+      inport = _ref1[key];
+      if (inport.process !== node.id) {
+        continue;
+      }
+      newDef = checkPort(inport, component.inports);
+      if (newDef) {
+        component.inports.push(newDef);
+      }
+    }
+    _ref2 = graph.outports;
+    for (key in _ref2) {
+      if (!__hasProp.call(_ref2, key)) continue;
+      outport = _ref2[key];
+      if (outport.process !== node.id) {
+        continue;
+      }
+      newDef = checkPort(outport, component.outports);
+      if (newDef) {
+        component.outports.push(newDef);
+      }
+    }
+    _ref3 = graph.initializers;
+    for (_j = 0, _len1 = _ref3.length; _j < _len1; _j++) {
+      iip = _ref3[_j];
+      if (iip.to.node !== node.id) {
+        continue;
+      }
+      newDef = checkPort(iip.to, component.inports);
+      if (newDef) {
+        component.inports.push(newDef);
+      }
+    }
+    _ref4 = graph.edges;
+    for (_k = 0, _len2 = _ref4.length; _k < _len2; _k++) {
+      edge = _ref4[_k];
+      if (edge.from.node === node.id) {
+        newDef = checkPort(edge.from, component.outports);
+        if (newDef) {
+          component.outports.push(newDef);
+        }
+      }
+      if (edge.to.node === node.id) {
+        newDef = checkPort(edge.to, component.inports);
+        if (newDef) {
+          component.inports.push(newDef);
+        }
+      }
+    }
+    components.push(component);
+  }
+  return components;
+};
+
+checkPort = function(graphItem, componentPorts) {
+  var newDef, port, _i, _len;
+  for (_i = 0, _len = componentPorts.length; _i < _len; _i++) {
+    port = componentPorts[_i];
+    if (port.name === graphItem.port) {
+      return;
+    }
+  }
+  newDef = {
+    name: graphItem.port,
+    type: 'all'
+  };
+  if (graphItem.index != null) {
+    newDef.addressable = true;
+  }
+  return newDef;
+};
+
+chackAndMergePorts = function(definitionPorts, componentPorts) {
+  var cPort, exists, index, port, _i, _j, _len, _len1, _results;
+  _results = [];
+  for (index = _i = 0, _len = definitionPorts.length; _i < _len; index = ++_i) {
+    port = definitionPorts[index];
+    exists = false;
+    for (_j = 0, _len1 = componentPorts.length; _j < _len1; _j++) {
+      cPort = componentPorts[_j];
+      if (cPort.name === port.name) {
+        if ((port.type != null) && port.type !== cPort.type) {
+          cPort.type = port.type;
+        }
+        if ((port.addressable != null) && port.addressable !== cPort.addressable) {
+          cPort.addressable = port.addressable;
+        }
+        exists = true;
+      }
+    }
+    if (!exists) {
+      _results.push(componentPorts.splice(index, 0, port));
+    } else {
+      _results.push(void 0);
+    }
+  }
+  return _results;
+};
+
+mergeComponentDefinition = function(definition, data) {
+  var component;
+  component = data[definition.name];
+  if (component != null) {
+    if (definition.inports != null) {
+      chackAndMergePorts(definition.inports, component.inports);
+    }
+    if (definition.outports != null) {
+      chackAndMergePorts(definition.outports, component.outports);
+    }
+    return component.icon = definition.icon;
+  } else {
+    return data[definition.name] = definition;
+  }
+};
+
+});
+require.register("the-graph/components/Dispatch.js", function(exports, require, module){
+var Constants, cancelAnimationFrame, noflo, requestAnimationFrame;
+
+noflo = require('noflo');
+
+Constants = require('../src/Constants');
+
+requestAnimationFrame = require('raf');
+
+cancelAnimationFrame = requestAnimationFrame.cancel;
+
+exports.getComponent = function() {
+  var c;
+  c = new noflo.Component;
+  c.icon = 'share-alt';
+  c.raf = null;
+  c.tick = false;
+  c.group = null;
+  c._graphActions = [];
+  c.startLoop = function() {
+    if (c.tick || c.raf) {
+      return;
+    }
+    return c.raf = requestAnimationFrame(c.loop);
+  };
+  c.stopLoop = function() {
+    if (c.raf) {
+      return cancelAnimationFrame(c.raf);
+    }
+  };
+  c.loop = function(time) {
+    if (c.tick) {
+      return;
+    }
+    c.raf = requestAnimationFrame(c.loop);
+    if (c._graphActions.length > 0) {
+      return c.sendBatch(time);
+    }
+  };
+  c.sendBatch = function(groupName) {
+    var action, _i, _len, _ref;
+    c.outPorts.graph_action.beginGroup(groupName);
+    _ref = c._graphActions;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      action = _ref[_i];
+      c.outPorts.graph_action.send(action);
+    }
+    c._graphActions = [];
+    c.outPorts.graph_action.endGroup();
+    return c.outPorts.graph_action.disconnect();
+  };
+  c.shutdown = function() {
+    return c.stopLoop();
+  };
+  c.inPorts.add('action', function(event, payload) {
+    switch (event) {
+      case 'begingroup':
+        c.group = payload;
+        if (payload === Constants.Graph.NEW_GRAPH) {
+          c._graphActions = [];
+          return c.outPorts.new_graph.beginGroup(c.group);
+        }
+        break;
+      case 'data':
+        if (c.group === Constants.Graph.NEW_GRAPH) {
+          return c.outPorts.new_graph.send(payload);
+        } else {
+          c._graphActions.push(payload);
+          return c.startLoop();
+        }
+        break;
+      case 'endgroup':
+        if (c.group === Constants.Graph.NEW_GRAPH) {
+          c.outPorts.new_graph.endGroup();
+          c.outPorts.new_graph.disconnect();
+        }
+        return c.group = null;
+    }
+  });
+  c.inPorts.add('tick', {
+    description: 'if never hit, will batch and dispatch on internal rAF loop',
+    datatype: 'bang'
+  }, function(event, payload) {
+    if (event !== 'data') {
+      return;
+    }
+    c.stopLoop();
+    c.tick = true;
+    return c.sendBatch();
+  });
+  c.outPorts.add('new_graph');
+  c.outPorts.add('lib_action');
+  c.outPorts.add('graph_action');
+  return c;
+};
+
+});
+require.register("the-graph/components/MakeGraphStore.js", function(exports, require, module){
+var Constants, hashAddressable, makePortState, noflo;
+
+noflo = require('noflo');
+
+Constants = require('../src/Constants');
+
+exports.getComponent = function() {
+  var c;
+  c = new noflo.Component;
+  c.icon = 'hdd-o';
+  c._graph = null;
+  c._library = null;
+  c._icons = {};
+  c._tempPos = {};
+  c.buildState = function() {
+    var addressableIns, addressableOuts, edge, edgeState, fromKey, fromNode, fromPort, graph, inSpaceing, index, inport, lib, libIn, libOut, node, nodeHash, nodeState, outSpaceing, outport, portHash, state, toKey, toNode, toPort, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _len5, _len6, _m, _n, _o, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8;
+    if (!(c._graph && c._library)) {
+      return;
+    }
+    graph = c._graph;
+    state = {
+      width: 800,
+      height: 800,
+      margin_top: 0,
+      margin_right: 0,
+      margin_bottom: 0,
+      margin_left: 0,
+      center_x: 400,
+      center_y: 400,
+      scale: 1,
+      groups: [],
+      edges: [],
+      nodes: [],
+      initializers: [],
+      inports: [],
+      outports: []
+    };
+    addressableIns = {};
+    addressableOuts = {};
+    _ref = graph.edges;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      edge = _ref[_i];
+      if (edge.from.index != null) {
+        hashAddressable(edge.from, 'out', addressableOuts);
+      }
+      if (edge.to.index != null) {
+        hashAddressable(edge.to, 'in', addressableIns);
+      }
+    }
+    nodeHash = {};
+    portHash = {};
+    _ref1 = graph.nodes;
+    for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+      node = _ref1[_j];
+      lib = c._library[node.component];
+      nodeState = {
+        key: node.id,
+        icon: c._icons[node.id] || lib.icon || void 0,
+        x: ((_ref2 = c._tempPos[node.id]) != null ? _ref2.x : void 0) || node.metadata.x || 0,
+        y: ((_ref3 = c._tempPos[node.id]) != null ? _ref3.y : void 0) || node.metadata.y || 0,
+        width: 72,
+        height: 72,
+        inports: [],
+        outports: []
+      };
+      _ref4 = lib.inports;
+      for (_k = 0, _len2 = _ref4.length; _k < _len2; _k++) {
+        libIn = _ref4[_k];
+        makePortState(node.id, 'in', libIn, addressableIns, nodeState.inports, portHash);
+      }
+      _ref5 = lib.outports;
+      for (_l = 0, _len3 = _ref5.length; _l < _len3; _l++) {
+        libOut = _ref5[_l];
+        makePortState(node.id, 'out', libOut, addressableOuts, nodeState.outports, portHash);
+      }
+      nodeState.height = Math.max(8, nodeState.inports.length, nodeState.outports.length) * 9;
+      inSpaceing = nodeState.height / (nodeState.inports.length + 1);
+      _ref6 = nodeState.inports;
+      for (index = _m = 0, _len4 = _ref6.length; _m < _len4; index = ++_m) {
+        inport = _ref6[index];
+        inport.x = 0;
+        inport.y = Math.round(inSpaceing * (index + 1));
+      }
+      outSpaceing = nodeState.height / (nodeState.inports.length + 1);
+      _ref7 = nodeState.outports;
+      for (index = _n = 0, _len5 = _ref7.length; _n < _len5; index = ++_n) {
+        outport = _ref7[index];
+        outport.x = 72;
+        outport.y = Math.round(outSpaceing * (index + 1));
+      }
+      nodeHash[node.id] = nodeState;
+      state.nodes.push(nodeState);
+    }
+    _ref8 = graph.edges;
+    for (_o = 0, _len6 = _ref8.length; _o < _len6; _o++) {
+      edge = _ref8[_o];
+      fromKey = "" + edge.from.node + ":::out:::" + edge.from.port;
+      if (edge.from.index != null) {
+        fromKey += ":::" + edge.from.index;
+      }
+      toKey = "" + edge.to.node + ":::in:::" + edge.to.port;
+      if (edge.to.index != null) {
+        toKey += ":::" + edge.to.index;
+      }
+      fromNode = nodeHash[edge.from.node];
+      toNode = nodeHash[edge.to.node];
+      fromPort = portHash[fromKey];
+      toPort = portHash[toKey];
+      edgeState = {
+        sX: fromNode.x + fromPort.x,
+        sY: fromNode.y + fromPort.y,
+        tX: toNode.x + toPort.x,
+        tY: toNode.y + toPort.y,
+        from: {
+          node: edge.from.node,
+          port: edge.from.port
+        },
+        to: {
+          node: edge.to.node,
+          port: edge.to.port
+        },
+        metadata: edge.metadata
+      };
+      if (edge.from.index != null) {
+        edgeState.from.index = edge.from.index;
+      }
+      if (edge.to.index != null) {
+        edgeState.to.index = edge.to.index;
+      }
+      state.edges.push(edgeState);
+    }
+    c._lastState = state;
+    return state;
+  };
+  c.inPorts.add('graph', function(event, payload) {
+    var graph;
+    if (event !== 'data') {
+      return;
+    }
+    graph = payload;
+    if ((graph != null ? graph.addNode : void 0) == null) {
+      c.error(new Error(Constants.Error.NEED_NOFLO_GRAPH));
+      return;
+    }
+    c._graph = payload;
+    c.outPorts.state.connect();
+    c.outPorts.state.send(c.buildState());
+    return c.outPorts.state.disconnect();
+  });
+  c.inPorts.add('library', function(event, payload) {
+    if (event !== 'data') {
+      return;
+    }
+    return c._library = payload;
+  });
+  c.inPorts.add('action', function(event, payload) {
+    if (event !== 'data') {
+      return;
+    }
+    return c.outPorts.state.send(c.buildState());
+  });
+  c.outPorts.add('state');
+  c.outPorts.add('error');
+  return c;
+};
+
+hashAddressable = function(side, direction, hash) {
+  var key;
+  key = "" + side.node + ":::" + direction + ":::" + side.port;
+  if ((hash[key] != null) && hash[key] < side.index) {
+    return hash[key] = side.index;
+  } else {
+    return hash[key] = 0;
+  }
+};
+
+makePortState = function(nodeID, direction, lib, addressableHash, ports, portHash) {
+  var addressablePort, count, index, key, port, _i, _ref;
+  key = "" + nodeID + ":::" + direction + ":::" + lib.name;
+  port = {
+    key: key,
+    name: lib.name,
+    type: lib.type
+  };
+  if (addressableHash[key] != null) {
+    count = addressableHash[key];
+    for (index = _i = 0, _ref = count + 1; 0 <= _ref ? _i <= _ref : _i >= _ref; index = 0 <= _ref ? ++_i : --_i) {
+      addressablePort = {
+        key: "" + key + ":::" + index,
+        name: lib.name,
+        type: lib.type,
+        index: index
+      };
+      ports.push(addressablePort);
+      portHash[addressablePort.key] = addressablePort;
+    }
+    return;
+  }
+  ports.push(port);
+  return portHash[port.key] = port;
+};
+
+});
+require.register("the-graph/components/MakeNofloAction.js", function(exports, require, module){
+var Constants, noflo;
+
+noflo = require('noflo');
+
+Constants = require('../src/Constants');
+
+exports.getComponent = function() {
+  var c;
+  c = new noflo.Component;
+  c._graph = null;
+  c.graphChanged = function(event) {
+    c.outPorts.action.connect();
+    c.outPorts.action.beginGroup(Constants.Graph.CHANGE_GRAPH);
+    c.outPorts.action.send(c._graph);
+    c.outPorts.action.endGroup();
+    return c.outPorts.action.disconnect();
+  };
+  c.inPorts.add('graph', function(event, payload) {
+    var graph;
+    if (event !== 'data') {
+      return;
+    }
+    if (c._graph) {
+      c._graph.removeListener('endTransaction', c.graphChanged);
+    }
+    graph = payload;
+    if ((graph != null ? graph.addNode : void 0) == null) {
+      c.error(new Error(Constants.Error.NEED_NOFLO_GRAPH));
+      return;
+    }
+    c._graph = graph;
+    c._graph.on('endTransaction', c.graphChanged);
+    c.outPorts.action.connect();
+    c.outPorts.action.beginGroup(Constants.Graph.NEW_GRAPH);
+    c.outPorts.action.send(graph);
+    c.outPorts.action.endGroup();
+    return c.outPorts.action.disconnect();
+  });
+  c.inPorts.add('in', function(event, payload) {
+    var _ref;
+    if (!c._graph) {
+      c.error(new Error(Constants.Error.NEED_NOFLO_GRAPH));
+      return;
+    }
+    if (event !== 'data') {
+      return;
+    }
+    if (payload.type && payload.args) {
+      return (_ref = c._graph[payload.type]) != null ? _ref.apply(c._graph, payload.args) : void 0;
+    }
+  });
+  c.outPorts.add('action');
+  c.outPorts.add('error');
+  return c;
+};
+
+});
+require.register("the-graph/components/MakeRuntimeAction.js", function(exports, require, module){
 var noflo;
 
 noflo = require('noflo');
@@ -14557,21 +15157,105 @@ noflo = require('noflo');
 exports.getComponent = function() {
   var c;
   c = new noflo.Component;
-  c.icon = 'cog';
-  c.description = 'do X';
-  c.inPorts.add('in', {
-    datatype: 'string',
-    process: function(event, payload) {
-      if (event !== 'data') {
-        return;
-      }
-      return c.outPorts.out.send(payload);
+  c.inPorts.add('in', function(event, payload) {
+    if (event !== 'data') {
+      return;
+    }
+    return c.outPorts.action.send(payload);
+  });
+  c.outPorts.add('action');
+  return c;
+};
+
+});
+require.register("the-graph/components/MakeViewAction.js", function(exports, require, module){
+var noflo;
+
+noflo = require('noflo');
+
+exports.getComponent = function() {
+  var c;
+  c = new noflo.Component;
+  c.inPorts.add('in', function(event, payload) {
+    if (event !== 'data') {
+      return;
+    }
+    return c.outPorts.action.send(payload);
+  });
+  c.outPorts.add('action');
+  return c;
+};
+
+});
+require.register("the-graph/components/RenderGraph.js", function(exports, require, module){
+var noflo;
+
+noflo = require('noflo');
+
+exports.getComponent = function() {
+  var c;
+  c = new noflo.Component;
+  c.icon = 'paint-brush';
+  c.inPorts.add('container');
+  c.inPorts.add('state', function(event, payload) {
+    if (event !== 'data') {
+
     }
   });
-  c.outPorts.add('out', {
-    datatype: 'string'
-  });
+  c.outPorts.add('event');
   return c;
+};
+
+});
+require.register("the-graph/components/RouteAction.js", function(exports, require, module){
+var noflo;
+
+noflo = require('noflo');
+
+exports.getComponent = function() {
+  var c;
+  c = new noflo.Component;
+  c.icon = 'share-alt';
+  c.inPorts.add('in', function(event, payload) {
+    if (event !== 'data') {
+      return;
+    }
+    return c.outPorts.view.send(payload);
+  });
+  c.outPorts.add('noflo');
+  c.outPorts.add('view');
+  return c;
+};
+
+});
+require.register("the-graph/src/Constants.js", function(exports, require, module){
+var GraphConstants;
+
+module.exports = GraphConstants = {
+  Runtime: {
+    UPDATE_ICON: 'update icon',
+    REGISTER_COMPONENT: 'register component'
+  },
+  Navigate: {
+    SELECT_NODES: 'select nodes',
+    SELECT_EDGES: 'select edges',
+    PAN: 'pan',
+    ZOOM: 'zoom',
+    SHOW_CONTEXT: 'show context',
+    NAV_TO: 'nav to'
+  },
+  Library: {
+    NEW_LIBRARY: 'new library',
+    CHANGE_LIBRARY: 'change library'
+  },
+  Graph: {
+    NEW_GRAPH: 'new graph',
+    CHANGE_GRAPH: 'change graph',
+    ADD_NODE: 'addNode'
+  },
+  Error: {
+    NEED_NOFLO_GRAPH: 'IP should be a valid NoFlo Graph'
+  }
 };
 
 });
@@ -14853,27 +15537,27 @@ module.exports = {
 
 
 
-require.alias("noflo-noflo/src/lib/Graph.js", "noflo-browser-app/deps/noflo/src/lib/Graph.js");
-require.alias("noflo-noflo/src/lib/InternalSocket.js", "noflo-browser-app/deps/noflo/src/lib/InternalSocket.js");
-require.alias("noflo-noflo/src/lib/BasePort.js", "noflo-browser-app/deps/noflo/src/lib/BasePort.js");
-require.alias("noflo-noflo/src/lib/InPort.js", "noflo-browser-app/deps/noflo/src/lib/InPort.js");
-require.alias("noflo-noflo/src/lib/OutPort.js", "noflo-browser-app/deps/noflo/src/lib/OutPort.js");
-require.alias("noflo-noflo/src/lib/Ports.js", "noflo-browser-app/deps/noflo/src/lib/Ports.js");
-require.alias("noflo-noflo/src/lib/Port.js", "noflo-browser-app/deps/noflo/src/lib/Port.js");
-require.alias("noflo-noflo/src/lib/ArrayPort.js", "noflo-browser-app/deps/noflo/src/lib/ArrayPort.js");
-require.alias("noflo-noflo/src/lib/Component.js", "noflo-browser-app/deps/noflo/src/lib/Component.js");
-require.alias("noflo-noflo/src/lib/AsyncComponent.js", "noflo-browser-app/deps/noflo/src/lib/AsyncComponent.js");
-require.alias("noflo-noflo/src/lib/LoggingComponent.js", "noflo-browser-app/deps/noflo/src/lib/LoggingComponent.js");
-require.alias("noflo-noflo/src/lib/ComponentLoader.js", "noflo-browser-app/deps/noflo/src/lib/ComponentLoader.js");
-require.alias("noflo-noflo/src/lib/NoFlo.js", "noflo-browser-app/deps/noflo/src/lib/NoFlo.js");
-require.alias("noflo-noflo/src/lib/Network.js", "noflo-browser-app/deps/noflo/src/lib/Network.js");
-require.alias("noflo-noflo/src/lib/Platform.js", "noflo-browser-app/deps/noflo/src/lib/Platform.js");
-require.alias("noflo-noflo/src/lib/Journal.js", "noflo-browser-app/deps/noflo/src/lib/Journal.js");
-require.alias("noflo-noflo/src/lib/Utils.js", "noflo-browser-app/deps/noflo/src/lib/Utils.js");
-require.alias("noflo-noflo/src/lib/Helpers.js", "noflo-browser-app/deps/noflo/src/lib/Helpers.js");
-require.alias("noflo-noflo/src/lib/Streams.js", "noflo-browser-app/deps/noflo/src/lib/Streams.js");
-require.alias("noflo-noflo/src/components/Graph.js", "noflo-browser-app/deps/noflo/src/components/Graph.js");
-require.alias("noflo-noflo/src/lib/NoFlo.js", "noflo-browser-app/deps/noflo/index.js");
+require.alias("noflo-noflo/src/lib/Graph.js", "the-graph/deps/noflo/src/lib/Graph.js");
+require.alias("noflo-noflo/src/lib/InternalSocket.js", "the-graph/deps/noflo/src/lib/InternalSocket.js");
+require.alias("noflo-noflo/src/lib/BasePort.js", "the-graph/deps/noflo/src/lib/BasePort.js");
+require.alias("noflo-noflo/src/lib/InPort.js", "the-graph/deps/noflo/src/lib/InPort.js");
+require.alias("noflo-noflo/src/lib/OutPort.js", "the-graph/deps/noflo/src/lib/OutPort.js");
+require.alias("noflo-noflo/src/lib/Ports.js", "the-graph/deps/noflo/src/lib/Ports.js");
+require.alias("noflo-noflo/src/lib/Port.js", "the-graph/deps/noflo/src/lib/Port.js");
+require.alias("noflo-noflo/src/lib/ArrayPort.js", "the-graph/deps/noflo/src/lib/ArrayPort.js");
+require.alias("noflo-noflo/src/lib/Component.js", "the-graph/deps/noflo/src/lib/Component.js");
+require.alias("noflo-noflo/src/lib/AsyncComponent.js", "the-graph/deps/noflo/src/lib/AsyncComponent.js");
+require.alias("noflo-noflo/src/lib/LoggingComponent.js", "the-graph/deps/noflo/src/lib/LoggingComponent.js");
+require.alias("noflo-noflo/src/lib/ComponentLoader.js", "the-graph/deps/noflo/src/lib/ComponentLoader.js");
+require.alias("noflo-noflo/src/lib/NoFlo.js", "the-graph/deps/noflo/src/lib/NoFlo.js");
+require.alias("noflo-noflo/src/lib/Network.js", "the-graph/deps/noflo/src/lib/Network.js");
+require.alias("noflo-noflo/src/lib/Platform.js", "the-graph/deps/noflo/src/lib/Platform.js");
+require.alias("noflo-noflo/src/lib/Journal.js", "the-graph/deps/noflo/src/lib/Journal.js");
+require.alias("noflo-noflo/src/lib/Utils.js", "the-graph/deps/noflo/src/lib/Utils.js");
+require.alias("noflo-noflo/src/lib/Helpers.js", "the-graph/deps/noflo/src/lib/Helpers.js");
+require.alias("noflo-noflo/src/lib/Streams.js", "the-graph/deps/noflo/src/lib/Streams.js");
+require.alias("noflo-noflo/src/components/Graph.js", "the-graph/deps/noflo/src/components/Graph.js");
+require.alias("noflo-noflo/src/lib/NoFlo.js", "the-graph/deps/noflo/index.js");
 require.alias("noflo-noflo/src/lib/NoFlo.js", "noflo/index.js");
 require.alias("bergie-emitter/index.js", "noflo-noflo/deps/events/index.js");
 
@@ -14884,21 +15568,21 @@ require.alias("noflo-fbp/lib/fbp.js", "noflo-noflo/deps/fbp/lib/fbp.js");
 require.alias("noflo-fbp/lib/fbp.js", "noflo-noflo/deps/fbp/index.js");
 require.alias("noflo-fbp/lib/fbp.js", "noflo-fbp/index.js");
 require.alias("noflo-noflo/src/lib/NoFlo.js", "noflo-noflo/index.js");
-require.alias("noflo-noflo-dom/components/AddClass.js", "noflo-browser-app/deps/noflo-dom/components/AddClass.js");
-require.alias("noflo-noflo-dom/components/AppendChild.js", "noflo-browser-app/deps/noflo-dom/components/AppendChild.js");
-require.alias("noflo-noflo-dom/components/CreateElement.js", "noflo-browser-app/deps/noflo-dom/components/CreateElement.js");
-require.alias("noflo-noflo-dom/components/CreateFragment.js", "noflo-browser-app/deps/noflo-dom/components/CreateFragment.js");
-require.alias("noflo-noflo-dom/components/GetAttribute.js", "noflo-browser-app/deps/noflo-dom/components/GetAttribute.js");
-require.alias("noflo-noflo-dom/components/GetElement.js", "noflo-browser-app/deps/noflo-dom/components/GetElement.js");
-require.alias("noflo-noflo-dom/components/HasClass.js", "noflo-browser-app/deps/noflo-dom/components/HasClass.js");
-require.alias("noflo-noflo-dom/components/Listen.js", "noflo-browser-app/deps/noflo-dom/components/Listen.js");
-require.alias("noflo-noflo-dom/components/ReadHtml.js", "noflo-browser-app/deps/noflo-dom/components/ReadHtml.js");
-require.alias("noflo-noflo-dom/components/RemoveElement.js", "noflo-browser-app/deps/noflo-dom/components/RemoveElement.js");
-require.alias("noflo-noflo-dom/components/SetAttribute.js", "noflo-browser-app/deps/noflo-dom/components/SetAttribute.js");
-require.alias("noflo-noflo-dom/components/WriteHtml.js", "noflo-browser-app/deps/noflo-dom/components/WriteHtml.js");
-require.alias("noflo-noflo-dom/components/RemoveClass.js", "noflo-browser-app/deps/noflo-dom/components/RemoveClass.js");
-require.alias("noflo-noflo-dom/components/RequestAnimationFrame.js", "noflo-browser-app/deps/noflo-dom/components/RequestAnimationFrame.js");
-require.alias("noflo-noflo-dom/index.js", "noflo-browser-app/deps/noflo-dom/index.js");
+require.alias("noflo-noflo-dom/components/AddClass.js", "the-graph/deps/noflo-dom/components/AddClass.js");
+require.alias("noflo-noflo-dom/components/AppendChild.js", "the-graph/deps/noflo-dom/components/AppendChild.js");
+require.alias("noflo-noflo-dom/components/CreateElement.js", "the-graph/deps/noflo-dom/components/CreateElement.js");
+require.alias("noflo-noflo-dom/components/CreateFragment.js", "the-graph/deps/noflo-dom/components/CreateFragment.js");
+require.alias("noflo-noflo-dom/components/GetAttribute.js", "the-graph/deps/noflo-dom/components/GetAttribute.js");
+require.alias("noflo-noflo-dom/components/GetElement.js", "the-graph/deps/noflo-dom/components/GetElement.js");
+require.alias("noflo-noflo-dom/components/HasClass.js", "the-graph/deps/noflo-dom/components/HasClass.js");
+require.alias("noflo-noflo-dom/components/Listen.js", "the-graph/deps/noflo-dom/components/Listen.js");
+require.alias("noflo-noflo-dom/components/ReadHtml.js", "the-graph/deps/noflo-dom/components/ReadHtml.js");
+require.alias("noflo-noflo-dom/components/RemoveElement.js", "the-graph/deps/noflo-dom/components/RemoveElement.js");
+require.alias("noflo-noflo-dom/components/SetAttribute.js", "the-graph/deps/noflo-dom/components/SetAttribute.js");
+require.alias("noflo-noflo-dom/components/WriteHtml.js", "the-graph/deps/noflo-dom/components/WriteHtml.js");
+require.alias("noflo-noflo-dom/components/RemoveClass.js", "the-graph/deps/noflo-dom/components/RemoveClass.js");
+require.alias("noflo-noflo-dom/components/RequestAnimationFrame.js", "the-graph/deps/noflo-dom/components/RequestAnimationFrame.js");
+require.alias("noflo-noflo-dom/index.js", "the-graph/deps/noflo-dom/index.js");
 require.alias("noflo-noflo-dom/index.js", "noflo-dom/index.js");
 require.alias("noflo-noflo/src/lib/Graph.js", "noflo-noflo-dom/deps/noflo/src/lib/Graph.js");
 require.alias("noflo-noflo/src/lib/InternalSocket.js", "noflo-noflo-dom/deps/noflo/src/lib/InternalSocket.js");
@@ -14930,23 +15614,23 @@ require.alias("noflo-fbp/lib/fbp.js", "noflo-noflo/deps/fbp/lib/fbp.js");
 require.alias("noflo-fbp/lib/fbp.js", "noflo-noflo/deps/fbp/index.js");
 require.alias("noflo-fbp/lib/fbp.js", "noflo-fbp/index.js");
 require.alias("noflo-noflo/src/lib/NoFlo.js", "noflo-noflo/index.js");
-require.alias("noflo-noflo-core/components/Callback.js", "noflo-browser-app/deps/noflo-core/components/Callback.js");
-require.alias("noflo-noflo-core/components/DisconnectAfterPacket.js", "noflo-browser-app/deps/noflo-core/components/DisconnectAfterPacket.js");
-require.alias("noflo-noflo-core/components/Drop.js", "noflo-browser-app/deps/noflo-core/components/Drop.js");
-require.alias("noflo-noflo-core/components/Group.js", "noflo-browser-app/deps/noflo-core/components/Group.js");
-require.alias("noflo-noflo-core/components/Kick.js", "noflo-browser-app/deps/noflo-core/components/Kick.js");
-require.alias("noflo-noflo-core/components/Merge.js", "noflo-browser-app/deps/noflo-core/components/Merge.js");
-require.alias("noflo-noflo-core/components/Output.js", "noflo-browser-app/deps/noflo-core/components/Output.js");
-require.alias("noflo-noflo-core/components/Repeat.js", "noflo-browser-app/deps/noflo-core/components/Repeat.js");
-require.alias("noflo-noflo-core/components/RepeatAsync.js", "noflo-browser-app/deps/noflo-core/components/RepeatAsync.js");
-require.alias("noflo-noflo-core/components/RepeatDelayed.js", "noflo-browser-app/deps/noflo-core/components/RepeatDelayed.js");
-require.alias("noflo-noflo-core/components/SendNext.js", "noflo-browser-app/deps/noflo-core/components/SendNext.js");
-require.alias("noflo-noflo-core/components/Split.js", "noflo-browser-app/deps/noflo-core/components/Split.js");
-require.alias("noflo-noflo-core/components/RunInterval.js", "noflo-browser-app/deps/noflo-core/components/RunInterval.js");
-require.alias("noflo-noflo-core/components/RunTimeout.js", "noflo-browser-app/deps/noflo-core/components/RunTimeout.js");
-require.alias("noflo-noflo-core/components/MakeFunction.js", "noflo-browser-app/deps/noflo-core/components/MakeFunction.js");
-require.alias("noflo-noflo-core/index.js", "noflo-browser-app/deps/noflo-core/index.js");
-require.alias("noflo-noflo-core/components/ReadGlobal.js", "noflo-browser-app/deps/noflo-core/components/ReadGlobal.js");
+require.alias("noflo-noflo-core/components/Callback.js", "the-graph/deps/noflo-core/components/Callback.js");
+require.alias("noflo-noflo-core/components/DisconnectAfterPacket.js", "the-graph/deps/noflo-core/components/DisconnectAfterPacket.js");
+require.alias("noflo-noflo-core/components/Drop.js", "the-graph/deps/noflo-core/components/Drop.js");
+require.alias("noflo-noflo-core/components/Group.js", "the-graph/deps/noflo-core/components/Group.js");
+require.alias("noflo-noflo-core/components/Kick.js", "the-graph/deps/noflo-core/components/Kick.js");
+require.alias("noflo-noflo-core/components/Merge.js", "the-graph/deps/noflo-core/components/Merge.js");
+require.alias("noflo-noflo-core/components/Output.js", "the-graph/deps/noflo-core/components/Output.js");
+require.alias("noflo-noflo-core/components/Repeat.js", "the-graph/deps/noflo-core/components/Repeat.js");
+require.alias("noflo-noflo-core/components/RepeatAsync.js", "the-graph/deps/noflo-core/components/RepeatAsync.js");
+require.alias("noflo-noflo-core/components/RepeatDelayed.js", "the-graph/deps/noflo-core/components/RepeatDelayed.js");
+require.alias("noflo-noflo-core/components/SendNext.js", "the-graph/deps/noflo-core/components/SendNext.js");
+require.alias("noflo-noflo-core/components/Split.js", "the-graph/deps/noflo-core/components/Split.js");
+require.alias("noflo-noflo-core/components/RunInterval.js", "the-graph/deps/noflo-core/components/RunInterval.js");
+require.alias("noflo-noflo-core/components/RunTimeout.js", "the-graph/deps/noflo-core/components/RunTimeout.js");
+require.alias("noflo-noflo-core/components/MakeFunction.js", "the-graph/deps/noflo-core/components/MakeFunction.js");
+require.alias("noflo-noflo-core/index.js", "the-graph/deps/noflo-core/index.js");
+require.alias("noflo-noflo-core/components/ReadGlobal.js", "the-graph/deps/noflo-core/components/ReadGlobal.js");
 require.alias("noflo-noflo-core/index.js", "noflo-core/index.js");
 require.alias("noflo-noflo/src/lib/Graph.js", "noflo-noflo-core/deps/noflo/src/lib/Graph.js");
 require.alias("noflo-noflo/src/lib/InternalSocket.js", "noflo-noflo-core/deps/noflo/src/lib/InternalSocket.js");
@@ -14981,21 +15665,21 @@ require.alias("noflo-noflo/src/lib/NoFlo.js", "noflo-noflo/index.js");
 require.alias("jashkenas-underscore/underscore.js", "noflo-noflo-core/deps/underscore/underscore.js");
 require.alias("jashkenas-underscore/underscore.js", "noflo-noflo-core/deps/underscore/index.js");
 require.alias("jashkenas-underscore/underscore.js", "jashkenas-underscore/index.js");
-require.alias("noflo-noflo-interaction/components/ListenChange.js", "noflo-browser-app/deps/noflo-interaction/components/ListenChange.js");
-require.alias("noflo-noflo-interaction/components/ListenDrag.js", "noflo-browser-app/deps/noflo-interaction/components/ListenDrag.js");
-require.alias("noflo-noflo-interaction/components/ListenHash.js", "noflo-browser-app/deps/noflo-interaction/components/ListenHash.js");
-require.alias("noflo-noflo-interaction/components/ListenKeyboard.js", "noflo-browser-app/deps/noflo-interaction/components/ListenKeyboard.js");
-require.alias("noflo-noflo-interaction/components/ListenKeyboardShortcuts.js", "noflo-browser-app/deps/noflo-interaction/components/ListenKeyboardShortcuts.js");
-require.alias("noflo-noflo-interaction/components/ListenMouse.js", "noflo-browser-app/deps/noflo-interaction/components/ListenMouse.js");
-require.alias("noflo-noflo-interaction/components/ListenPointer.js", "noflo-browser-app/deps/noflo-interaction/components/ListenPointer.js");
-require.alias("noflo-noflo-interaction/components/ListenResize.js", "noflo-browser-app/deps/noflo-interaction/components/ListenResize.js");
-require.alias("noflo-noflo-interaction/components/ListenScroll.js", "noflo-browser-app/deps/noflo-interaction/components/ListenScroll.js");
-require.alias("noflo-noflo-interaction/components/ListenSpeech.js", "noflo-browser-app/deps/noflo-interaction/components/ListenSpeech.js");
-require.alias("noflo-noflo-interaction/components/ListenTouch.js", "noflo-browser-app/deps/noflo-interaction/components/ListenTouch.js");
-require.alias("noflo-noflo-interaction/components/SetHash.js", "noflo-browser-app/deps/noflo-interaction/components/SetHash.js");
-require.alias("noflo-noflo-interaction/components/ReadCoordinates.js", "noflo-browser-app/deps/noflo-interaction/components/ReadCoordinates.js");
-require.alias("noflo-noflo-interaction/index.js", "noflo-browser-app/deps/noflo-interaction/index.js");
-require.alias("noflo-noflo-interaction/components/ReadGamepad.js", "noflo-browser-app/deps/noflo-interaction/components/ReadGamepad.js");
+require.alias("noflo-noflo-interaction/components/ListenChange.js", "the-graph/deps/noflo-interaction/components/ListenChange.js");
+require.alias("noflo-noflo-interaction/components/ListenDrag.js", "the-graph/deps/noflo-interaction/components/ListenDrag.js");
+require.alias("noflo-noflo-interaction/components/ListenHash.js", "the-graph/deps/noflo-interaction/components/ListenHash.js");
+require.alias("noflo-noflo-interaction/components/ListenKeyboard.js", "the-graph/deps/noflo-interaction/components/ListenKeyboard.js");
+require.alias("noflo-noflo-interaction/components/ListenKeyboardShortcuts.js", "the-graph/deps/noflo-interaction/components/ListenKeyboardShortcuts.js");
+require.alias("noflo-noflo-interaction/components/ListenMouse.js", "the-graph/deps/noflo-interaction/components/ListenMouse.js");
+require.alias("noflo-noflo-interaction/components/ListenPointer.js", "the-graph/deps/noflo-interaction/components/ListenPointer.js");
+require.alias("noflo-noflo-interaction/components/ListenResize.js", "the-graph/deps/noflo-interaction/components/ListenResize.js");
+require.alias("noflo-noflo-interaction/components/ListenScroll.js", "the-graph/deps/noflo-interaction/components/ListenScroll.js");
+require.alias("noflo-noflo-interaction/components/ListenSpeech.js", "the-graph/deps/noflo-interaction/components/ListenSpeech.js");
+require.alias("noflo-noflo-interaction/components/ListenTouch.js", "the-graph/deps/noflo-interaction/components/ListenTouch.js");
+require.alias("noflo-noflo-interaction/components/SetHash.js", "the-graph/deps/noflo-interaction/components/SetHash.js");
+require.alias("noflo-noflo-interaction/components/ReadCoordinates.js", "the-graph/deps/noflo-interaction/components/ReadCoordinates.js");
+require.alias("noflo-noflo-interaction/index.js", "the-graph/deps/noflo-interaction/index.js");
+require.alias("noflo-noflo-interaction/components/ReadGamepad.js", "the-graph/deps/noflo-interaction/components/ReadGamepad.js");
 require.alias("noflo-noflo-interaction/index.js", "noflo-interaction/index.js");
 require.alias("noflo-noflo/src/lib/Graph.js", "noflo-noflo-interaction/deps/noflo/src/lib/Graph.js");
 require.alias("noflo-noflo/src/lib/InternalSocket.js", "noflo-noflo-interaction/deps/noflo/src/lib/InternalSocket.js");
@@ -15027,8 +15711,8 @@ require.alias("noflo-fbp/lib/fbp.js", "noflo-noflo/deps/fbp/lib/fbp.js");
 require.alias("noflo-fbp/lib/fbp.js", "noflo-noflo/deps/fbp/index.js");
 require.alias("noflo-fbp/lib/fbp.js", "noflo-fbp/index.js");
 require.alias("noflo-noflo/src/lib/NoFlo.js", "noflo-noflo/index.js");
-require.alias("noflo-noflo-runtime-webrtc/runtime/network.js", "noflo-browser-app/deps/noflo-runtime-webrtc/runtime/network.js");
-require.alias("noflo-noflo-runtime-webrtc/runtime/network.js", "noflo-browser-app/deps/noflo-runtime-webrtc/index.js");
+require.alias("noflo-noflo-runtime-webrtc/runtime/network.js", "the-graph/deps/noflo-runtime-webrtc/runtime/network.js");
+require.alias("noflo-noflo-runtime-webrtc/runtime/network.js", "the-graph/deps/noflo-runtime-webrtc/index.js");
 require.alias("noflo-noflo-runtime-webrtc/runtime/network.js", "noflo-runtime-webrtc/index.js");
 require.alias("noflo-noflo-runtime-base/src/Base.js", "noflo-noflo-runtime-webrtc/deps/noflo-runtime-base/src/Base.js");
 require.alias("noflo-noflo-runtime-base/src/protocol/Graph.js", "noflo-noflo-runtime-webrtc/deps/noflo-runtime-base/src/protocol/Graph.js");
