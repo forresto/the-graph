@@ -11,10 +11,7 @@ exports.getComponent = ->
     components = makeInitialComponents graph
     for component in components
       c.registerComponent component
-    c.outPorts.library.connect()
-    c.outPorts.library.beginGroup Constants.Library.NEW_LIBRARY
     c.outPorts.library.send c._data
-    c.outPorts.library.endGroup()
     c.outPorts.library.disconnect()
   c.registerComponent = (definition) ->
     mergeComponentDefinition definition, c._data

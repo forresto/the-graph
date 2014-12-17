@@ -6,16 +6,13 @@ exports.getComponent = ->
   c._graph = null
 
   c.graphChanged = (event) ->
-    c.outPorts.action.connect()
-    c.outPorts.action.beginGroup Constants.Graph.CHANGE_GRAPH
     c.outPorts.action.send c._graph
-    c.outPorts.action.endGroup()
-    c.outPorts.action.disconnect()
 
   c.inPorts.add 'graph', (event, payload) ->
     return unless event is 'data'
     if c._graph
       c._graph.removeListener 'endTransaction', c.graphChanged
+      c.outPorts.action.disconnect()
     graph = payload
     unless graph?.addNode?
       c.error new Error Constants.Error.NEED_NOFLO_GRAPH
@@ -23,11 +20,8 @@ exports.getComponent = ->
     c._graph = graph
     c._graph.on 'endTransaction', c.graphChanged
 
-    c.outPorts.action.connect()
-    c.outPorts.action.beginGroup Constants.Graph.NEW_GRAPH
-    c.outPorts.action.send graph
-    c.outPorts.action.endGroup()
-    c.outPorts.action.disconnect()
+    c.outPorts.new_graph.send graph
+    c.outPorts.new_graph.disconnect()
 
   c.inPorts.add 'in', (event, payload) ->
     unless c._graph
@@ -37,6 +31,7 @@ exports.getComponent = ->
     if payload.type and payload.args
       c._graph[payload.type]?.apply c._graph, payload.args
 
+  c.outPorts.add 'new_graph'
   c.outPorts.add 'action'
   c.outPorts.add 'error'
   c

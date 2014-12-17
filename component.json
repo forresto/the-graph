@@ -10,7 +10,9 @@
     "noflo/noflo-dom": "*",
     "noflo/noflo-core": "*",
     "noflo/noflo-interaction": "*",
-    "noflo/noflo-runtime-webrtc": "*"
+    "noflo/noflo-runtime-webrtc": "*",
+    "noflo/noflo-flow": "*",
+    "component/raf": "1.2.0"
   },
   "remotes": [
     "https://raw.githubusercontent.com"

@@ -23,17 +23,15 @@ describe 'MakeNofloAction', ->
       t.send 'graph', {}
 
   describe 'When receiving a graph', ->
-    it 'Should make `new graph` action.', (done) ->
-      t.receive 'action', (data, groups, dataCount, groupCount) ->
-        chai.expect(groups[0]).to.equal(Constants.Graph.NEW_GRAPH)
+    it 'Should forward to `new_graph` port.', (done) ->
+      t.receive 'new_graph', (data, groups, dataCount, groupCount) ->
         chai.expect(data).to.equal(graph)
         done()
       t.send {graph}
 
   describe 'When receiving a graph change action', ->
-    it 'Should make `change graph` action.', (done) ->
-      t.receive 'action', (data, groups, dataCount, groupCount) ->
-        chai.expect(groups[0]).to.equal(Constants.Graph.CHANGE_GRAPH)
+    it 'Should send to `action` port.', (done) ->
+      t.outs.action.once 'data', (data) ->
         graph = data
         chai.expect(graph.nodes.length).to.equal 5
         chai.expect(graph.nodes[4].id).to.equal 'name'
@@ -45,9 +43,8 @@ describe 'MakeNofloAction', ->
           args: ['name', 'lib/comp', {x:10, y:10}]
 
   describe 'When receiving a new graph', ->
-    it 'Should make `new graph` action.', (done) ->
-      t.receive 'action', (data, groups, dataCount, groupCount) ->
-        chai.expect(groups[0]).to.equal(Constants.Graph.NEW_GRAPH)
+    it 'Should send on `new_graph` port.', (done) ->
+      t.receive 'new_graph', (data, groups, dataCount, groupCount) ->
         chai.expect(data).to.equal(graph)
         done()
       t.send {graph}

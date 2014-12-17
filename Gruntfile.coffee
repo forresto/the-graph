@@ -14,15 +14,15 @@ module.exports = ->
           'package.json': ['graphs/*', 'components/*']
 
     # CoffeeScript compilation of tests
-    # coffee:
-    #   test:
-    #     options:
-    #       bare: true
-    #     expand: true
-    #     cwd: 'test'
-    #     src: ['**.coffee']
-    #     dest: 'test'
-    #     ext: '.js'
+    coffee:
+      test:
+        options:
+          bare: true
+        expand: true
+        cwd: 'test'
+        src: ['**.coffee']
+        dest: 'test'
+        ext: '.js'
 
     # Browser build of NoFlo
     noflo_browser:
@@ -33,12 +33,12 @@ module.exports = ->
           "browser/<%=pkg.name%>.js": ['component.json']
 
     # Generate runner.html
-    # noflo_browser_mocha:
-    #   all:
-    #     options:
-    #       scripts: ["../browser/<%=pkg.name%>.js"]
-    #     files:
-    #       'test/runner.html': ['test/*.js']
+    noflo_browser_mocha:
+      all:
+        options:
+          scripts: ["../browser/<%=pkg.name%>.js"]
+        files:
+          'test/runner.html': ['test/*.js']
 
     # JavaScript minification for the browser
     uglify:
@@ -66,6 +66,18 @@ module.exports = ->
         src: ['test/*.coffee']
         options:
           reporter: 'spec'
+
+    # BDD tests on browser
+    mocha_phantomjs:
+      options:
+        output: 'test/result.xml'
+        reporter: 'spec'
+      all: ['test/runner.html']
+
+    # Browserify builds
+    # browserify:
+    #   spec:
+        
 
     'gh-pages':
       options:
@@ -96,7 +108,7 @@ module.exports = ->
 
   # Our local tasks
   @registerTask 'build', 'Build NoFlo for the chosen target platform', (target = 'all') =>
-    # @task.run 'coffee'
+    @task.run 'coffee'
     @task.run 'noflo_manifest'
     if target is 'all' or target is 'browser'
       @task.run 'noflo_browser'
@@ -106,7 +118,12 @@ module.exports = ->
     @task.run 'coffeelint'
     # @task.run 'coffee'
     @task.run 'noflo_manifest'
-    @task.run 'cafemocha'
+    if target is 'all' or target is 'nodejs'
+      @task.run 'cafemocha'
+    # if target is 'all' or target is 'browser'
+    #   @task.run 'noflo_browser'
+    #   @task.run 'noflo_browser_mocha'
+    #   @task.run 'mocha_phantomjs'
 
   @registerTask 'default', ['test']
   @registerTask 'dev', ['test', 'watch']
