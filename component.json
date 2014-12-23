@@ -11,8 +11,7 @@
     "noflo/noflo-core": "*",
     "noflo/noflo-interaction": "*",
     "noflo/noflo-runtime-webrtc": "*",
-    "noflo/noflo-flow": "*",
-    "component/raf": "1.2.0"
+    "noflo/noflo-flow": "*"
   },
   "remotes": [
     "https://raw.githubusercontent.com"
@@ -28,9 +27,7 @@
     "components/MakeViewAction.coffee",
     "components/RenderGraph.coffee",
     "components/RouteAction.coffee",
-    "graphs/flux.json",
-    "graphs/Batch.json",
-    "src/Constants.coffee"
+    "graphs/flux.json"
   ],
   "json": [
     "graphs/main.json",

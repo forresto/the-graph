@@ -1,5 +1,8 @@
 noflo = require 'noflo'
-Constants = require '../src/Constants'
+# Constants = require '../src/Constants'
+Constants =
+  Error:
+    NEED_NOFLO_GRAPH: 'IP should be a valid NoFlo Graph'
 
 exports.getComponent = ->
   c = new noflo.Component

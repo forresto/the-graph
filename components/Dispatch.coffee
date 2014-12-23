@@ -1,7 +1,25 @@
 noflo = require 'noflo'
-Constants = require '../src/Constants'
-requestAnimationFrame = require 'raf'
-cancelAnimationFrame = requestAnimationFrame.cancel
+
+# Constants = require '../src/Constants'
+Constants =
+  View:
+    ROUTE: 'view_actions'
+  Library:
+    ROUTE: 'lib_actions'
+  Graph:
+    ROUTE: 'graph_actions'
+
+# requestAnimationFrame = require 'raf'
+prev = new Date().getTime()
+requestAnimationFrame = window?.requestAnimationFrame or window?.webkitRequestAnimationFrame or window?.mozRequestAnimationFrame or (fn) ->
+  curr = new Date().getTime()
+  ms = Math.max(0, 16 - (curr - prev))
+  req = setTimeout(fn, ms)
+  prev = curr
+  return req
+
+# cancelAnimationFrame = requestAnimationFrame.cancel
+cancelAnimationFrame = window?.cancelAnimationFrame or window?.webkitCancelAnimationFrame or window?.mozCancelAnimationFrame or clearTimeout
 
 exports.getComponent = ->
   c = new noflo.Component
@@ -70,7 +88,9 @@ exports.getComponent = ->
     c.stopLoop()
     c._tick = true
     c.sendBatch()
+
   c.outPorts.add 'new_graph', {datatype: 'object'}
   c.outPorts.add 'lib_actions', {datatype: 'array'}
   c.outPorts.add 'graph_actions', {datatype: 'array'}
+
   c

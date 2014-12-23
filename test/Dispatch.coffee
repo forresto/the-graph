@@ -17,6 +17,7 @@ describe 'Dispatch', ->
   t = new Tester 'the-graph/Dispatch'
 
   before (done) ->
+    @timeout 10000
     t.start ->
       done()
 
