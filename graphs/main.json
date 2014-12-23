@@ -11,8 +11,8 @@
     "outports": {},
     "groups": [],
     "processes": {
-        "the-graph-canvas/flux": {
-            "component": "the-graph-canvas/flux",
+        "the-graph/flux": {
+            "component": "the-graph/flux",
             "metadata": {
                 "label": "flux",
                 "x": 396,

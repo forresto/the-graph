@@ -51,7 +51,7 @@
     "groups": [],
     "processes": {
         "MakeViewAction": {
-            "component": "the-graph-canvas/MakeViewAction",
+            "component": "the-graph/MakeViewAction",
             "metadata": {
                 "label": "MakeViewAction",
                 "x": 288,
@@ -61,7 +61,7 @@
             }
         },
         "MakeNofloAction": {
-            "component": "the-graph-canvas/MakeNofloAction",
+            "component": "the-graph/MakeNofloAction",
             "metadata": {
                 "label": "MakeNofloAction",
                 "x": 288,
@@ -71,7 +71,7 @@
             }
         },
         "MakeRuntimeAction": {
-            "component": "the-graph-canvas/MakeRuntimeAction",
+            "component": "the-graph/MakeRuntimeAction",
             "metadata": {
                 "label": "MakeRuntimeAction",
                 "x": 288,
@@ -81,7 +81,7 @@
             }
         },
         "RouteAction": {
-            "component": "the-graph-canvas/RouteAction",
+            "component": "the-graph/RouteAction",
             "metadata": {
                 "label": "RouteAction",
                 "x": 144,
@@ -91,7 +91,7 @@
             }
         },
         "Dispatch": {
-            "component": "the-graph-canvas/Dispatch",
+            "component": "the-graph/Dispatch",
             "metadata": {
                 "label": "Dispatch",
                 "x": 432,
@@ -101,7 +101,7 @@
             }
         },
         "StoreGraph": {
-            "component": "the-graph-canvas/MakeGraphStore",
+            "component": "the-graph/MakeGraphStore",
             "metadata": {
                 "label": "StoreGraph",
                 "x": 720,
@@ -111,7 +111,7 @@
             }
         },
         "StoreLibrary": {
-            "component": "the-graph-canvas/MakeLibraryStore",
+            "component": "the-graph/MakeLibraryStore",
             "metadata": {
                 "label": "StoreLibrary",
                 "x": 576,
@@ -121,7 +121,7 @@
             }
         },
         "Render": {
-            "component": "the-graph-canvas/RenderGraph",
+            "component": "the-graph/RenderGraph",
             "metadata": {
                 "label": "Render",
                 "x": 864,

@@ -40,7 +40,6 @@
   ],
   "noflo": {
     "graphs": {
-      "Batch": "graphs/Batch.json",
       "flux": "graphs/flux.json",
       "main": "graphs/main.json"
     },
