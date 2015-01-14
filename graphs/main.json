@@ -15,7 +15,7 @@
             "component": "the-graph/flux",
             "metadata": {
                 "label": "flux",
-                "x": 180,
+                "x": 288,
                 "y": 144,
                 "width": 72,
                 "height": 72
@@ -25,7 +25,7 @@
             "component": "dom/GetElement",
             "metadata": {
                 "label": "#container",
-                "x": 36,
+                "x": 144,
                 "y": 180,
                 "width": 72,
                 "height": 72
@@ -35,8 +35,8 @@
             "component": "strings/ParseJson",
             "metadata": {
                 "label": "strings/ParseJson",
-                "x": 36,
-                "y": 72,
+                "x": 0,
+                "y": 36,
                 "width": 72,
                 "height": 72
             }
@@ -45,8 +45,18 @@
             "component": "core/Output",
             "metadata": {
                 "label": "core/Output",
-                "x": 288,
+                "x": 432,
                 "y": 144,
+                "width": 72,
+                "height": 72
+            }
+        },
+        "LoadNoFlo": {
+            "component": "the-graph/LoadNoFloGraph",
+            "metadata": {
+                "label": "LoadNoFlo",
+                "x": 144,
+                "y": 36,
                 "width": 72,
                 "height": 72
             }
@@ -64,19 +74,6 @@
             },
             "metadata": {
                 "route": 6
-            }
-        },
-        {
-            "src": {
-                "process": "strings/ParseJson_4z2dy",
-                "port": "out"
-            },
-            "tgt": {
-                "process": "the-graph/flux",
-                "port": "noflo_graph"
-            },
-            "metadata": {
-                "route": 4
             }
         },
         {
@@ -103,6 +100,32 @@
             },
             "metadata": {
                 "route": 1
+            }
+        },
+        {
+            "src": {
+                "process": "strings/ParseJson_4z2dy",
+                "port": "out"
+            },
+            "tgt": {
+                "process": "LoadNoFlo",
+                "port": "in"
+            },
+            "metadata": {
+                "route": 4
+            }
+        },
+        {
+            "src": {
+                "process": "LoadNoFlo",
+                "port": "out"
+            },
+            "tgt": {
+                "process": "the-graph/flux",
+                "port": "noflo_graph"
+            },
+            "metadata": {
+                "route": 4
             }
         },
         {
