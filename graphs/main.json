@@ -51,6 +51,16 @@
                 "width": 72,
                 "height": 72
             }
+        },
+        "LoadGraph": {
+            "component": "the-graph/LoadNoFloGraph",
+            "metadata": {
+                "label": "LoadGraph",
+                "x": 144,
+                "y": 36,
+                "width": 72,
+                "height": 72
+            }
         }
     },
     "connections": [
@@ -91,6 +101,32 @@
             },
             "metadata": {
                 "route": 1
+            }
+        },
+        {
+            "src": {
+                "process": "strings/ParseJson_4z2dy",
+                "port": "out"
+            },
+            "tgt": {
+                "process": "LoadGraph",
+                "port": "json"
+            },
+            "metadata": {
+                "route": 4
+            }
+        },
+        {
+            "src": {
+                "process": "LoadGraph",
+                "port": "graph"
+            },
+            "tgt": {
+                "process": "the-graph/flux",
+                "port": "noflo_graph"
+            },
+            "metadata": {
+                "route": 4
             }
         },
         {
